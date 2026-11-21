@@ -1,6 +1,6 @@
 # Click by Click Access
 
-Onboarding and offboarding for small nonprofits.
+Free onboarding, offboarding and device inventory, one step at a time.
 
 This grew out of my Cyber Ready Clinic capstone, [Click by Click Offboarding](https://github.com/Catherine-Jason/click-by-click-offboarding). That app walks you through closing every account and collecting every device when someone leaves. Click by Click Access starts from the same app, and the plan is to help with the day someone starts too, so access is set up right from the beginning.
 
