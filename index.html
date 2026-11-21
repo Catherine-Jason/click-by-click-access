@@ -191,8 +191,46 @@ a.tag.src:hover{border-color:var(--accent)}
 .dev .seg label{padding:6px 10px; font-size:13px}
 .st.missing{color:var(--warn); font-weight:500}
 footer{font-size:12.5px; color:var(--muted); display:flex; flex-direction:column; gap:4px; text-align:center}
+/* v2.1: main tabs, inventory, backup */
+[hidden]{display:none!important}
+nav.tabs{display:grid; grid-template-columns:repeat(3,1fr); gap:6px}
+nav.tabs button{border:1px solid var(--line); background:var(--bg); border-radius:10px; padding:11px 6px; font-family:var(--f-display); font-weight:700; font-size:14px; color:var(--muted)}
+nav.tabs button:hover{border-color:var(--accent)}
+nav.tabs button[aria-current="page"]{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+input[type=search]{font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 11px; width:100%}
+.filters{display:flex; flex-wrap:wrap; gap:6px}
+.filters button{border:1px solid var(--line); background:var(--bg); border-radius:99px; padding:5px 12px; font-size:13px; font-weight:500}
+.filters button[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+.filters .mono{font-size:12px; color:var(--muted)}
+table.inv{min-width:600px}
+table.inv tr.invsum{cursor:pointer}
+table.inv tr.invsum:hover td{background:var(--accent-soft)}
+table.inv tr.invsum.stale:hover td{background:var(--warn-soft)}
+.linkbtn.devopen{font-size:14px; text-align:left}
+tr.invedit > td{background:var(--bg); padding:14px}
+.invmain{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:8px}
+.invmain .field label{font-size:12px; color:var(--muted)}
+.invmain input,.invmain select{background:var(--surface)}
+.ist{font-family:var(--f-mono); font-size:12px; white-space:nowrap; padding:2px 7px; border-radius:5px; border:1px solid var(--line)}
+.ist-inuse{color:var(--accent); border-color:var(--accent-soft)} .ist-storage{color:var(--ink)} .ist-ready{color:var(--done); border-color:var(--done-soft)}
+.ist-repair,.ist-missing{color:var(--warn); border-color:var(--warn)} .ist-retired{color:var(--skip)}
+.stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px}
+.rephead{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:baseline; justify-content:space-between}
+.datapanel{gap:12px}
 
 @media (max-width:620px){
+  nav.tabs button{font-size:13px; padding:10px 4px}
+  .invmain{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  table.inv{min-width:0}
+  table.inv thead{display:none}
+  table.inv, table.inv tbody, table.inv tr, table.inv td{display:block; width:100%}
+  table.inv tr{border-bottom:1px solid var(--line)}
+  table.inv td{border-bottom:0; padding:3px 12px}
+  table.inv td:first-child{padding-top:10px} table.inv td:last-child{padding-bottom:10px}
+  table.inv td[data-l]::before{content:attr(data-l) ": "; color:var(--muted); font-size:12px}
+  table.inv td[data-l="Device"]::before{content:none}
+  tr.invedit > td{padding:12px}
   .grid2,.systems,.recordhead{grid-template-columns:1fr}
   .devrow{grid-template-columns:1fr auto; grid-template-areas:"type rm" "os os" "model model" "serial serial" "assigned assigned" "more more"}
   .devrow.noos{grid-template-areas:"type rm" "model model" "serial serial" "assigned assigned" "more more"}
@@ -204,7 +242,7 @@ footer{font-size:12.5px; color:var(--muted); display:flex; flex-direction:column
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
 @media print{
   body{background:#fff; color:#000}
-  .card,nav.steps,header .actions,.rowbtns,footer,.banner,#learnMore{display:none!important}
+  .card,nav.steps,nav.tabs,header .actions,.rowbtns,footer,.banner,#learnMore,#dataPanel{display:none!important}
   .panel{border:0; padding:0}
 }
 </style>
@@ -224,6 +262,12 @@ footer{font-size:12.5px; color:var(--muted); display:flex; flex-direction:column
     </div>
   </header>
 
+  <nav class="tabs" aria-label="Sections">
+    <button type="button" data-tab="on">Onboarding</button>
+    <button type="button" data-tab="off">Offboarding</button>
+    <button type="button" data-tab="inv">Inventory</button>
+  </nav>
+
   <div class="card" id="card" aria-live="polite">
     <div class="chip" aria-hidden="true"></div>
     <div class="who"><b id="cardWho">Departing person</b><span id="cardSub"></span></div>
@@ -231,19 +275,17 @@ footer{font-size:12.5px; color:var(--muted); display:flex; flex-direction:column
     <div class="bar"><i id="cardBar"></i></div>
   </div>
 
-  <nav class="steps" aria-label="Steps">
-    <button type="button" data-step="intake"><span class="n">1</span><span>Intake<span class="lbl-long"> questions</span></span></button>
-    <button type="button" data-step="list"><span class="n">2</span><span>Checklist</span></button>
-    <button type="button" data-step="record"><span class="n">3</span><span>Record</span></button>
-  </nav>
+  <nav class="steps" id="steps" aria-label="Steps"></nav>
 
   <main id="view"></main>
 
   <div id="learnMore"></div>
 
+  <div id="dataPanel"></div>
+
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.0 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.1 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
@@ -281,6 +323,16 @@ const DEVICE_STATUS = [
   {id:"wiped", label:"Wiped and ready to reuse"},
   {id:"missing", label:"Missing"}
 ];
+/* Access only: where each device in the organization inventory is */
+const INV_STATUS = [
+  {id:"inuse", label:"In use"},
+  {id:"storage", label:"In storage"},
+  {id:"ready", label:"Ready to reuse"},
+  {id:"repair", label:"Needs repair"},
+  {id:"missing", label:"Missing"},
+  {id:"retired", label:"Retired"}
+];
+function invStatusLabel(id){ const s=INV_STATUS.find(x=>x.id===id); return s? s.label : "In use"; }
 function devTypeLabel(id){ const t=DEVICE_TYPES.find(x=>x.id===id); return t? t.label : "Device"; }
 function devStatusLabel(id){ const s=DEVICE_STATUS.find(x=>x.id===id); return s? s.label : "Still out"; }
 function devName(d){ return devTypeLabel(d.type)+(d.model? " · "+d.model : ""); }
@@ -396,7 +448,11 @@ function blankDetails(){ const o={}; DEV_FIELDS.forEach(f=>{ if(f.kind==="enc") 
 function todayISO(){ return isoDate(new Date()); }
 function fmtShort(iso){ const d=parseDate(iso); return d? d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : ""; }
 /* the return due date follows the last day until someone changes it */
-function dueOf(d){ return d.due || state.intake.lastDay || ""; }
+function dueOf(d){ return d.due || (isInv(d)? "" : state.intake.lastDay || ""); }
+/* Access only: inventory devices are not tied to one person's last day */
+function isInv(d){ return !!state && Array.isArray(state.inventory) && state.inventory.indexOf(d)!==-1; }
+function findDev(id){ return state.devices.find(x=>x.id===id) || state.inventory.find(x=>x.id===id); }
+function uid(p){ let id; do{ id=p+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }while(findDev(id)); return id; }
 function patchAge(d){ if(!hasOS(d) || !d.patched) return null; const p=parseDate(d.patched); if(!p) return null; const t=new Date(); t.setHours(0,0,0,0); return Math.round((t-p)/86400000); }
 function patchStale(d){ const a=patchAge(d); return a!==null && a>30; }
 function patchMsg(d){ return patchStale(d)? "Not updated in "+patchAge(d)+" days. Install updates before it goes to someone else." : ""; }
@@ -427,7 +483,8 @@ function setFromText(d,f,s){
 }
 function parseStatus(s){ s=(s||"").toLowerCase(); return /missing|lost|stolen/.test(s)? "missing" : /wiped|ready/.test(s)? "wiped" : /returned|received/.test(s)? "returned" : /still out|^out$/.test(s)? "out" : ""; }
 
-function importDevicesCSV(text){
+/* into: the list to add to (the offboarding devices unless given). onRow: Access-only hook for the inventory, return false to skip a row */
+function importDevicesCSV(text, into, onRow){
   const rows=parseCSV(text); if(rows.length<2) return 0;
   const head=rows[0].map(h=>h.trim().toLowerCase());
   const used=new Set();
@@ -458,7 +515,8 @@ function importDevicesCSV(text){
     const st=parseStatus(cell(iStatus)); if(st) d.status=st;
     /* "Reassigned to Pat" in the Next step column fills Reassigned to */
     if(d.next==="reassigned" && !d.reassignedTo){ const m=cell(col.next).match(/reassigned to\s+(.+)/i); if(m) d.reassignedTo=m[1].slice(0,200); }
-    state.devices.push(d); n++;
+    if(onRow && onRow(d, cell(iStatus))===false) return;
+    (into||state.devices).push(d); n++;
   });
   return n;
 }
@@ -639,7 +697,7 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;",
 
 function nextFriday(){const d=new Date(); const add=(5-d.getDay()+7)%7||7; return isoDate(addDays(d,add))}
 function blankRegs(){ return {hipaa:false, pci:false, ferpa:false, hold:false}; }
-function blank(){ return {step:"intake", example:false, learn:false, intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs()}, items:{}, devices:[]} }
+function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs()}, items:{}, devices:[]} }
 function example(){
   const s = blank(); s.example = true;
   s.intake = {role:"Volunteer events lead", type:"volunteer", departure:"planned", lastDay:nextFriday(), doneBy:"Office manager", admin:false,
@@ -655,17 +713,21 @@ function example(){
   return s;
 }
 /* older saves (v1.0) have no devices, and a hand-edited save can have broken entries: keep only valid devices */
-function cleanDevices(list){
+/* inv: true for the organization inventory (keeps its status), false for one person's devices (keeps the link to the inventory) */
+function cleanDevices(list, inv){
   const types=DEVICE_TYPES.map(t=>t.id), sts=DEVICE_STATUS.map(t=>t.id), oses=DEVICE_OS.map(o=>o.id), encs=ENC_STATUS.map(e=>e.id), seen=new Set();
-  return (Array.isArray(list)? list : []).filter(d=>d && typeof d==="object").map((d,n)=>{
-    let id=String(d.id||"").replace(/[^A-Za-z0-9_-]/g,"") || "dold"+n;
+  return (Array.isArray(list)? list : []).filter(d=>d && typeof d==="object" && !Array.isArray(d)).slice(0, inv? 5000 : 200).map((d,n)=>{
+    let id=String(d.id||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,40) || (inv?"iold":"dold")+n;
     while(seen.has(id)) id+="x"; seen.add(id);
-    return Object.assign({id:id, type: types.indexOf(d.type)!==-1? d.type : "other",
+    const out = Object.assign({id:id, type: types.indexOf(d.type)!==-1? d.type : "other",
       /* v1.1 saves have no OS or encryption: guess the OS from the model, encryption stays Not sure */
       os: oses.indexOf(d.os)!==-1? d.os : guessOS(typeof d.model==="string"? d.model : ""),
       enc: encs.indexOf(d.enc)!==-1? d.enc : "unsure",
-      model: typeof d.model==="string"? d.model : "", serial: typeof d.serial==="string"? d.serial : "",
-      status: sts.indexOf(d.status)!==-1? d.status : "out", at: typeof d.at==="number"? d.at : null}, cleanDetails(d));
+      model: typeof d.model==="string"? d.model.slice(0,120) : "", serial: typeof d.serial==="string"? d.serial.slice(0,80) : "",
+      status: sts.indexOf(d.status)!==-1? d.status : "out", at: Number.isFinite(d.at) && Math.abs(d.at)<8.64e15? d.at : null}, cleanDetails(d));
+    if(inv) out.invStatus = INV_STATUS.some(s=>s.id===d.invStatus)? d.invStatus : (out.assignedTo? "inuse" : "storage");
+    else if(typeof d.invId==="string" && /^[A-Za-z0-9_-]{1,60}$/.test(d.invId)) out.invId=d.invId;
+    return out;
   });
 }
 /* v1.2 and older saves have none of the detail fields: fill blanks, and drop anything with the wrong shape */
@@ -682,11 +744,35 @@ function cleanDetails(d){
   });
   return o;
 }
-function load(){ try{ const raw=localStorage.getItem(KEY); if(raw){ const s=JSON.parse(raw); if(s && s.intake){ if(!s.items||typeof s.items!=="object") s.items={}; if(!Array.isArray(s.intake.systems)) s.intake.systems=[]; s.devices=cleanDevices(s.devices);
+/* Rebuild a saved or restored state from known fields only, so old saves load and edited or broken files cannot break the page.
+   Returns null when it is not something this app saved. */
+function normalizeState(s){
+  if(!s || typeof s!=="object" || Array.isArray(s) || !s.intake || typeof s.intake!=="object" || Array.isArray(s.intake)) return null;
+  const i=s.intake, str=(v,n)=> typeof v==="string"? v.slice(0,n) : "";
   /* v1.3 and older saves have no regulated data answers or Learn mode */
-  const r=blankRegs(), old=s.intake.regs; if(old && typeof old==="object") Object.keys(r).forEach(k=>{ r[k] = old[k]===true; }); s.intake.regs=r; s.learn = s.learn===true;
-  return s; } } }catch(e){} return null }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)) }catch(e){} }
+  const r=blankRegs(); if(i.regs && typeof i.regs==="object") Object.keys(r).forEach(k=>{ r[k] = i.regs[k]===true; });
+  const out = {
+    step: ["intake","list","record"].indexOf(s.step)!==-1? s.step : "intake", example: s.example===true, learn: s.learn===true,
+    /* v2.0 and older saves have no tabs or inventory */
+    tab: ["on","off","inv"].indexOf(s.tab)!==-1? s.tab : "off", invStep: ["all","add","reports"].indexOf(s.invStep)!==-1? s.invStep : "all",
+    intake: {role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", departure: i.departure==="unplanned"? "unplanned" : "planned",
+      lastDay: typeof i.lastDay==="string" && /^\d{4}-\d{2}-\d{2}$/.test(i.lastDay)? i.lastDay : "", doneBy:str(i.doneBy,200), admin: i.admin===true,
+      systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000), regs:r},
+    items: {}, devices: cleanDevices(s.devices, false), inventory: cleanDevices(s.inventory, true)
+  };
+  if(s.items && typeof s.items==="object" && !Array.isArray(s.items)) Object.keys(s.items).slice(0,500).forEach(k=>{
+    const v=s.items[k];
+    if(!/^[A-Za-z0-9_]{1,80}$/.test(k) || k==="__proto__" || k==="constructor" || k==="prototype" || !v || typeof v!=="object") return;
+    out.items[k] = {status: ["open","done","na"].indexOf(v.status)!==-1? v.status : "open", note:str(v.note,2000), at: Number.isFinite(v.at) && Math.abs(v.at)<8.64e15? v.at : null};
+  });
+  /* a device id must point to one device only */
+  const invIds=new Set(out.inventory.map(d=>d.id));
+  out.devices.forEach(d=>{ while(invIds.has(d.id)) d.id+="o"; });
+  return out;
+}
+function load(){ try{ const raw=localStorage.getItem(KEY); if(raw) return normalizeState(JSON.parse(raw)); }catch(e){} return null }
+let saveFailed=false;
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); saveFailed=false; }catch(e){ saveFailed=true; } }
 
 let state = load() || example();
 let confirmNew = false;
@@ -1044,9 +1130,10 @@ function viewDeviceInputs(){
   return '<div class="field"><span class="legend">Device inventory</span>'+
     '<small>List every organization device they have. You will check each one back in on the checklist.</small>'+
     '<div class="devlist">'+(rows || '<div class="devempty">No devices listed yet.</div>')+'</div>'+
-    '<div class="rowbtns"><button class="btn" type="button" data-act="addDevice">Add device</button>'+
+    '<div class="rowbtns"><button class="btn" type="button" data-act="loadInv">Load their devices from inventory</button><button class="btn" type="button" data-act="addDevice">Add device</button>'+
     '<button class="btn" type="button" data-act="importCSV">Import from Excel (.csv)</button>'+
     (TOP? '<button class="linkbtn" type="button" data-act="csvTemplate">Download a blank template</button>' : '')+'</div>'+
+    '<small>Load their devices from inventory adds every device on the Inventory tab whose Assigned to matches their role or name above. When you check one in, the inventory updates too.</small>'+
     '<small>In Excel, filter your inventory to this person\'s devices, then use File, Save As, CSV. It reads the same columns as the blank template, plus common names like Hostname, User, Department and Warranty.</small>'+
     (importMsg? '<small id="importMsg" role="status" style="color:var(--done)">'+esc(importMsg)+'</small>' : '')+'</div>';
 }
@@ -1074,7 +1161,7 @@ function fieldInput(d,f){
   else if(f.kind==="yn") ctl=sel([["","Not set"]].concat(YN));
   else ctl=sel([["","Not set"]].concat(f.opts));
   if(f.k==="patched") extra='<small class="warntext" data-warn="'+d.id+'">'+esc(patchMsg(d))+'</small>';
-  if(f.k==="due" && !d.due) extra='<small>Same as the last day until you change it.</small>';
+  if(f.k==="due" && !d.due && !isInv(d)) extra='<small>Same as the last day until you change it.</small>';
   return '<div class="field'+(f.kind==="textarea"?" wide":"")+'"><label for="'+id+'">'+esc(lab)+'</label>'+ctl+extra+'</div>';
 }
 /* the dates line on each check in card */
@@ -1099,6 +1186,7 @@ function viewDeviceCheckin(){
         DEVICE_STATUS.map(s=>'<label><input type="radio" name="devst_'+dev.id+'" data-devstatus="'+dev.id+'" value="'+s.id+'"'+(dev.status===s.id?" checked":"")+(hold&&s.id==="wiped"&&dev.status!=="wiped"?" disabled":"")+'>'+esc(s.label)+'</label>').join("")+
       '</div>'+
       (dev.at?'<span class="stamp">'+esc(devStatusLabel(dev.status))+' '+esc(fmtStamp(dev.at))+'</span>':"")+
+      (linkedInv(dev)? '<span class="ddates"><span><b>In the inventory as</b> '+esc(invStatusLabel(linkedInv(dev).invStatus))+'</span></span>' : '')+
       '<div class="ddates" data-dates="'+dev.id+'">'+devDates(dev)+'</div>'+
       '<small class="warntext" data-warn="'+dev.id+'">'+esc(patchMsg(dev))+'</small>'+
       devMore(dev)+
@@ -1244,30 +1332,369 @@ function viewRecord(){
   '</div></section>';
 }
 
+/* ================= v2.1 (Access only): Onboarding placeholder, Inventory tab, backup ================= */
+let invQuery = "", invFilter = "all", invMsg = "", invAdded = "", restoreMsg = "", pendingRestore = null;
+const openInv = new Set(); /* inventory rows whose details are open */
+const BACKUP_APP = "Click by Click Access";
+function normName(s){ return String(s||"").toLowerCase().replace(/\s+/g," ").trim(); }
+function parseInvStatus(s){
+  s=(s||"").toLowerCase().trim();
+  if(/missing|lost|stolen/.test(s)) return "missing";
+  if(/retired|disposed|recycled|sold|destroyed/.test(s)) return "retired";
+  if(/repair|broken|damaged/.test(s)) return "repair";
+  if(/ready|wiped|reuse/.test(s)) return "ready";
+  if(/storage|stored|returned|shelf|spare|available/.test(s)) return "storage";
+  if(/in use|assigned|active|deployed|issued|still out|^out$/.test(s)) return "inuse";
+  return "";
+}
+function invStale(d){ return d.invStatus!=="retired" && patchStale(d); }
+function warrantyDays(d){ const w=parseDate(d.warranty); if(!w) return null; const t=new Date(); t.setHours(0,0,0,0); return Math.round((w-t)/86400000); }
+
+/* ---------- link between Offboarding and Inventory ---------- */
+function linkedInv(dev){ return dev.invId ? state.inventory.find(x=>x.id===dev.invId) || null : null; }
+/* check in result -> inventory status. Still out puts it back in use, in case a status was picked by mistake. */
+const CHECKIN_TO_INV = {returned:"storage", wiped:"ready", missing:"missing", out:"inuse"};
+function syncToInventory(dev){
+  const inv=linkedInv(dev); if(!inv) return;
+  inv.invStatus = CHECKIN_TO_INV[dev.status] || inv.invStatus;
+  /* a returned or wiped device is no longer theirs; a missing one stays under their name so you know who had it */
+  inv.assignedTo = (dev.status==="returned" || dev.status==="wiped") ? "" : (dev.assignedTo || inv.assignedTo);
+}
+function loadFromInventory(){
+  const who=normName(state.intake.role);
+  if(!state.inventory.length) return "Your inventory is empty. Add devices on the Inventory tab first.";
+  if(!who) return "Enter their role or name above first. It has to match Assigned to on the Inventory tab.";
+  const matches=state.inventory.filter(d=>normName(d.assignedTo)===who);
+  if(!matches.length) return 'No inventory devices are assigned to "'+state.intake.role.trim()+'". Check the spelling on the Inventory tab.';
+  let added=0, linked=0, already=0;
+  matches.forEach(inv=>{
+    if(state.devices.some(d=>d.invId===inv.id)){ already++; return; }
+    /* a device already typed in here with the same serial gets linked instead of added twice */
+    const k=normName(inv.serial), same = k && state.devices.find(d=>!d.invId && normName(d.serial)===k);
+    if(same){ same.invId=inv.id; linked++; return; }
+    const copy=JSON.parse(JSON.stringify(inv)); delete copy.invStatus;
+    copy.id=uid("d"); copy.invId=inv.id; copy.status="out"; copy.at=null;
+    state.devices.push(copy); added++;
+  });
+  const parts=[];
+  if(added) parts.push("Loaded "+added+" device"+(added===1?"":"s")+" from the inventory.");
+  if(linked) parts.push("Linked "+linked+" device"+(linked===1?"":"s")+" you had already listed.");
+  if(already) parts.push(already+" "+(already===1?"was":"were")+" already loaded.");
+  return parts.join(" ");
+}
+
+/* ---------- views ---------- */
+function viewOnboarding(){
+  return '<section class="panel"><div><h2>Onboarding</h2><p class="muted">Setting up accounts, devices and access when someone starts.</p></div>'+
+    '<div class="devempty"><b>Coming soon.</b></div></section>';
+}
+function invExampleBanner(){
+  return state.inventory.some(d=>/^ex/.test(d.id)) ? '<div class="banner"><span><b>Example devices loaded.</b> These are samples so you can see how the inventory works.</span><button class="btn" type="button" data-act="invClearExample">Remove example devices</button></div>' : "";
+}
+function viewInvAll(){
+  const inv=state.inventory;
+  let h='<section class="panel">'+invExampleBanner()+'<div><h2>All devices</h2><p class="muted">Every device your organization owns. Click a device to see and edit all of its details.</p></div>';
+  if(!inv.length) return h+'<div class="devempty">No devices in the inventory yet.</div><div class="rowbtns"><button class="btn primary" type="button" data-invgo="add">Add or import devices</button><button class="btn" type="button" data-act="invExample">Load example inventory</button></div></section>';
+  const staleN=inv.filter(invStale).length;
+  if(staleN) h+='<div class="banner warn"><span><b>'+staleN+' device'+(staleN===1?" has":"s have")+' not been updated in over 30 days.</b> '+(staleN===1?"It is":"They are")+' marked with ⚠ below.</span><button class="btn" type="button" data-invgo="reports">See report</button></div>';
+  h+='<input type="search" id="invSearch" placeholder="Search model, serial, person, department or location" aria-label="Search devices" value="'+esc(invQuery)+'">';
+  h+='<div class="filters" role="group" aria-label="Filter by status">'+[["all","All",inv.length]].concat(INV_STATUS.map(s=>[s.id,s.label,inv.filter(d=>d.invStatus===s.id).length])).map(f=>
+    '<button type="button" data-invfilter="'+f[0]+'" aria-pressed="'+(invFilter===f[0])+'">'+esc(f[1])+' <span class="mono">'+f[2]+'</span></button>').join("")+'</div>';
+  return h+'<div id="invTable">'+invTableHTML()+'</div></section>';
+}
+function invMatches(d,q){
+  const words=normName(q).split(" ").filter(Boolean); if(!words.length) return true;
+  const hay=normName([devTypeLabel(d.type), hasOS(d)? osLabel(d.os) : "", d.model, d.serial, d.hostname, d.assignedTo, d.dept, d.location, d.notes, invStatusLabel(d.invStatus)].join(" "));
+  return words.every(w=>hay.indexOf(w)!==-1);
+}
+function invTableHTML(){
+  const list=state.inventory.filter(d=>(invFilter==="all" || d.invStatus===invFilter) && invMatches(d,invQuery));
+  if(!list.length) return '<div class="devempty">No devices match.</div>';
+  return '<p class="muted" id="invCount" role="status">Showing '+list.length+' of '+state.inventory.length+'</p>'+
+    '<div class="tablewrap"><table class="inv"><thead><tr><th>Device</th><th>OS</th><th>Assigned to</th><th>Status</th><th>Last updated</th><th>Warranty end</th></tr></thead><tbody>'+
+    list.map(d=>'<tr class="invsum'+(invStale(d)?' stale':'')+'" data-invrow="'+d.id+'">'+invRowCells(d)+'</tr>'+
+      (openInv.has(d.id)? '<tr class="invedit"><td colspan="6">'+invEditor(d)+'</td></tr>' : '')).join("")+'</tbody></table></div>';
+}
+function invRowCells(d){
+  const na='<span class="muted">n/a</span>', dash='<span class="muted">—</span>';
+  return '<td data-l="Device"><button type="button" class="linkbtn devopen" data-invopen="'+d.id+'" aria-expanded="'+openInv.has(d.id)+'">'+esc(devName(d))+'</button><br><span class="muted mono">'+esc(d.serial||"No serial")+'</span></td>'+
+    '<td data-l="OS">'+(hasOS(d)? esc(osLabel(d.os)) : na)+'</td>'+
+    '<td data-l="Assigned to">'+(d.assignedTo? esc(d.assignedTo) : dash)+'</td>'+
+    '<td data-l="Status"><span class="ist ist-'+d.invStatus+'">'+esc(invStatusLabel(d.invStatus))+'</span></td>'+
+    '<td data-l="Last updated">'+(!hasOS(d)? na : invStale(d)? '<span class="st missing">⚠ '+esc(fmtShort(d.patched))+', '+patchAge(d)+' days ago</span>' : d.patched? esc(fmtShort(d.patched)) : dash)+'</td>'+
+    '<td data-l="Warranty end">'+(d.warranty? esc(fmtShort(d.warranty)) : dash)+'</td>';
+}
+/* the open row: main fields, then the same More details form the offboarding checklist uses */
+function invEditor(d){
+  const a=k=>' id="inv_'+k+'_'+d.id+'" data-dev="'+d.id+'" data-field="'+k+'"';
+  const fld=(k,label,ctl)=>'<div class="field"><label for="inv_'+k+'_'+d.id+'">'+label+'</label>'+ctl+'</div>';
+  const sel=(k,opts)=>'<select'+a(k)+'>'+opts.map(o=>'<option value="'+o[0]+'"'+(d[k]===o[0]?" selected":"")+'>'+esc(o[1])+'</option>').join("")+'</select>';
+  const txt=k=>'<input type="text"'+a(k)+' value="'+esc(d[k])+'">';
+  return '<div class="invmain">'+
+      fld("type","Type",sel("type",DEVICE_TYPES.map(t=>[t.id,t.label])))+
+      (hasOS(d)? fld("os","Operating system",sel("os",DEVICE_OS.map(o=>[o.id,o.label]))) : '')+
+      fld("invStatus","Status",sel("invStatus",INV_STATUS.map(s=>[s.id,s.label])))+
+      fld("model","Make and model",txt("model"))+fld("serial","Serial or asset tag",txt("serial"))+fld("assignedTo","Assigned to",txt("assignedTo"))+
+    '</div>'+
+    '<small class="warntext" data-warn="'+d.id+'">'+esc(invStale(d)? patchMsg(d) : "")+'</small>'+
+    devMore(d)+
+    '<div class="rowbtns"><button class="btn" type="button" data-invclose="'+d.id+'">Close</button><button class="btn warn" type="button" data-act="invRemove" data-dev="'+d.id+'">Remove from inventory</button></div>';
+}
+function viewInvAdd(){
+  const opt=(list,sel)=>list.map(o=>'<option value="'+o[0]+'"'+(o[0]===sel?" selected":"")+'>'+esc(o[1])+'</option>').join("");
+  const fld=(id,label,ctl)=>'<div class="field"><label for="'+id+'">'+label+'</label>'+ctl+'</div>';
+  return '<section class="panel">'+invExampleBanner()+
+    '<div><h2>Add or import</h2><p class="muted">Add one device by hand, or bring in your whole inventory from Excel.</p></div>'+
+    '<h3>Add a device</h3>'+
+    '<div class="invmain">'+
+      fld("na_type","Type",'<select id="na_type">'+opt(DEVICE_TYPES.map(t=>[t.id,t.label]),"laptop")+'</select>')+
+      fld("na_os","Operating system",'<select id="na_os">'+opt([["","Guess from the model"]].concat(DEVICE_OS.map(o=>[o.id,o.label])),"")+'</select>')+
+      fld("na_status","Status",'<select id="na_status">'+opt(INV_STATUS.map(s=>[s.id,s.label]),"inuse")+'</select>')+
+      fld("na_model","Make and model",'<input type="text" id="na_model" placeholder="Example: Dell Latitude 5440">')+
+      fld("na_serial","Serial or asset tag",'<input type="text" id="na_serial">')+
+      fld("na_assigned","Assigned to",'<input type="text" id="na_assigned" placeholder="Role or name">')+
+    '</div>'+
+    '<small class="muted">Fill in every other detail after you add it, from All devices.</small>'+
+    '<div class="rowbtns"><button class="btn primary" type="button" data-act="invAdd">Add to inventory</button></div>'+
+    (invMsg? '<small id="invMsg" role="status" style="color:var(--done)">'+esc(invMsg)+(invAdded? ' <button class="linkbtn" type="button" data-invshow="'+invAdded+'">Open it in All devices</button>' : '')+'</small>' : '')+
+    '<h3>Import from Excel</h3>'+
+    '<div class="rowbtns"><button class="btn" type="button" data-act="invImport">Import from Excel (.csv)</button>'+
+    (TOP? '<button class="linkbtn" type="button" data-act="csvTemplate">Download a blank template</button>' : '')+'</div>'+
+    '<small class="muted">In Excel, use File, Save As, CSV. It reads the same columns as the blank template, plus common names like Hostname, User, Department, Warranty and Status. Rows with a serial or asset tag already in the inventory are skipped, so importing the same file twice is safe.</small>'+
+    (importMsg? '<small id="importMsg" role="status" style="color:var(--done)">'+esc(importMsg)+'</small>' : '')+
+  '</section>';
+}
+function reportLists(){
+  const inv=state.inventory;
+  return {
+    stale: inv.filter(invStale).sort((a,b)=>patchAge(b)-patchAge(a)),
+    missing: inv.filter(d=>d.invStatus==="missing"),
+    warranty: inv.filter(d=>{ const n=warrantyDays(d); return d.invStatus!=="retired" && n!==null && n>=0 && n<=90; }).sort((a,b)=>warrantyDays(a)-warrantyDays(b))
+  };
+}
+function viewInvReports(){
+  const inv=state.inventory, R=reportLists(), dash='<span class="muted">—</span>';
+  let h='<section class="panel">'+invExampleBanner()+'<div><h2>Reports</h2><p class="muted">As of '+esc(fmt(new Date()))+'.</p></div>';
+  if(!inv.length) return h+'<div class="devempty">No devices in the inventory yet.</div><div class="rowbtns"><button class="btn primary" type="button" data-invgo="add">Add or import devices</button></div></section>';
+  const dl=(k,label)=> TOP? '<button class="linkbtn" type="button" data-act="invCSV" data-report="'+k+'">'+label+'</button>' : '';
+  const table=(list,head,cell)=> !list.length? '<div class="devempty">None right now.</div>' :
+    '<div class="tablewrap"><table class="inv"><thead><tr><th>Device</th><th>Assigned to</th><th>Status</th><th>'+head+'</th></tr></thead><tbody>'+
+    list.map(d=>'<tr><td data-l="Device"><button type="button" class="linkbtn devopen" data-invshow="'+d.id+'">'+esc(devName(d))+'</button><br><span class="muted mono">'+esc(d.serial||"No serial")+'</span></td>'+
+      '<td data-l="Assigned to">'+(d.assignedTo? esc(d.assignedTo) : dash)+'</td><td data-l="Status"><span class="ist ist-'+d.invStatus+'">'+esc(invStatusLabel(d.invStatus))+'</span></td>'+
+      '<td data-l="'+head+'">'+cell(d)+'</td></tr>').join("")+'</tbody></table></div>';
+  h+='<div class="rephead"><h3>Devices by status</h3>'+dl("counts","Download as .csv")+'</div><div class="stats">'+
+    INV_STATUS.map(s=>'<div class="kv"><span>'+esc(s.label)+'</span><b>'+inv.filter(d=>d.invStatus===s.id).length+'</b></div>').join("")+
+    '<div class="kv"><span>Total</span><b>'+inv.length+'</b></div></div>';
+  h+='<div class="rephead"><h3>Need updates ('+R.stale.length+')</h3>'+dl("stale","Download as .csv")+'</div><p class="muted">Not updated or patched in over 30 days. Retired devices are left out.</p>'+
+    table(R.stale,"Last updated",d=>'<span class="st missing">⚠ '+esc(fmtShort(d.patched))+', '+patchAge(d)+' days ago</span>');
+  h+='<div class="rephead"><h3>Missing ('+R.missing.length+')</h3>'+dl("missing","Download as .csv")+'</div>'+
+    table(R.missing,"Location",d=>d.location? esc(d.location) : dash);
+  h+='<div class="rephead"><h3>Warranty ending in the next 90 days ('+R.warranty.length+')</h3>'+dl("warranty","Download as .csv")+'</div>'+
+    table(R.warranty,"Warranty end",d=>{ const n=warrantyDays(d); return esc(fmtShort(d.warranty))+' <span class="muted">('+(n===0?"today":"in "+n+" day"+(n===1?"":"s"))+')</span>'; });
+  return h+(TOP? '<div class="rowbtns"><button class="btn primary" type="button" data-act="invCSV" data-report="all">Download all devices for Excel (.csv)</button></div>' : '')+'</section>';
+}
+function invCSV(list, extra){
+  extra=extra||[];
+  const lines=[csvHeader().concat(["Status"]).concat(extra.map(x=>x[0])).map(csvCell).join(",")];
+  list.forEach(d=>lines.push(csvDeviceCells(d).concat([invStatusLabel(d.invStatus)]).concat(extra.map(x=>x[1](d))).map(csvCell).join(",")));
+  return "﻿"+lines.join("\r\n");
+}
+function exampleInventory(){
+  const ago=n=>isoDate(addDays(new Date(),-n)), ahead=n=>isoDate(addDays(new Date(),n));
+  const mk=o=>{ const d=Object.assign(newDevice(o.type), o); d.id=uid("ex"); return d; };
+  return [
+    mk({type:"laptop", os:"windows", enc:"on", model:"Dell Latitude 5440", serial:"Asset tag NP-0142", hostname:"NP-LT-0142", osVersion:"Windows 11 24H2", condition:"good", assignedTo:"Volunteer events lead",
+      assignedBy:"Office manager", dateAssigned:"2025-03-03", dept:"Events", location:"Main office", patched:ago(45), mdm:"yes", av:"yes", purchase:"2024-01-15", warranty:"2027-01-15", invStatus:"inuse"}),
+    mk({type:"tablet", os:"ios", enc:"on", model:"iPad (check in table at events)", serial:"DMPXK2Q4LM", osVersion:"iPadOS 18", condition:"good", assignedTo:"Volunteer events lead", assignedBy:"Office manager",
+      dateAssigned:"2025-04-12", dept:"Events", location:"Event check in table", patched:ago(6), mdm:"yes", purchase:"2024-09-01", invStatus:"inuse"}),
+    mk({type:"laptop", os:"macos", enc:"on", model:"MacBook Air M2", serial:"NP-0157", assignedTo:"Program director", dept:"Programs", location:"Main office", patched:ago(3), mdm:"yes", av:"yes", purchase:"2023-02-10", warranty:ahead(40), invStatus:"inuse"}),
+    mk({type:"phone", os:"android", enc:"on", model:"Google Pixel 8", serial:"NP-0163", assignedTo:"Outreach coordinator", dept:"Outreach", patched:ago(62), mdm:"yes", purchase:"2024-05-20", warranty:ahead(75), invStatus:"inuse"}),
+    mk({type:"laptop", os:"chromeos", enc:"on", model:"Lenovo Chromebook 300e", serial:"NP-0120", location:"Storage closet", patched:ago(20), next:"storage", purchase:"2022-08-01", warranty:"2025-08-01", invStatus:"storage"}),
+    mk({type:"laptop", os:"windows", enc:"on", model:"HP ProBook 450", serial:"NP-0131", location:"IT shelf", patched:ago(2), wiped:ago(2), wipeMethod:"factory", invStatus:"ready"}),
+    mk({type:"tablet", os:"other", model:"Amazon Fire HD 10", serial:"NP-0149", location:"IT shelf", condition:"repair", notes:"Cracked screen", invStatus:"repair"}),
+    mk({type:"hotspot", os:"other", model:"Verizon Jetpack", serial:"NP-0170", assignedTo:"Summer intern", location:"Unknown", notes:"Not returned after the summer program", invStatus:"missing"}),
+    mk({type:"laptop", os:"windows", enc:"off", model:"Dell Latitude E7470", serial:"NP-0088", next:"recycled", purchase:"2017-06-01", invStatus:"retired"}),
+    mk({type:"accessory", model:"Dell 24 inch monitor", serial:"NP-0175", assignedTo:"Program director", location:"Main office", invStatus:"inuse"})
+  ];
+}
+function removeInv(ids){
+  state.inventory = state.inventory.filter(d=>!ids.has(d.id));
+  state.devices.forEach(d=>{ if(ids.has(d.invId)) delete d.invId; });
+  ids.forEach(id=>{ openInv.delete(id); openMore.delete(id); });
+}
+function redrawKeep(focusSel){ const y=window.scrollY; render(); window.scrollTo(0,y); if(focusSel){ const f=view.querySelector(focusSel); if(f) f.focus({preventScroll:true}); } }
+function toggleInv(id){
+  if(openInv.has(id)) openInv.delete(id); else { openInv.add(id); openMore.add(id); }
+  redrawKeep('[data-invopen="'+id+'"]');
+}
+function showInInventory(id){
+  if(!state.inventory.some(d=>d.id===id)) return;
+  state.tab="inv"; state.invStep="all"; invFilter="all"; invQuery=""; invMsg=""; importMsg=""; openInv.add(id); openMore.add(id); save(); render();
+  const b=view.querySelector('[data-invopen="'+id+'"]'); if(b){ b.scrollIntoView({block:"center"}); b.focus({preventScroll:true}); }
+}
+/* clicks on the Inventory tab; returns true when handled */
+function invClick(e){
+  const t=e.target;
+  const ig=t.closest("[data-invgo]"); if(ig){ goInv(ig.dataset.invgo); return true; }
+  const f=t.closest("[data-invfilter]"); if(f){ invFilter=f.dataset.invfilter; redrawKeep('[data-invfilter="'+invFilter+'"]'); return true; }
+  const sh=t.closest("[data-invshow]"); if(sh){ showInInventory(sh.dataset.invshow); return true; }
+  const cl=t.closest("[data-invclose]"); if(cl){ toggleInv(cl.dataset.invclose); return true; }
+  const r=t.closest("[data-invrow]"); if(r){ toggleInv(r.dataset.invrow); return true; }
+  const a=t.closest("[data-act]"); if(!a) return false;
+  const act=a.dataset.act;
+  if(act==="invExample"){ state.inventory=state.inventory.concat(exampleInventory()); save(); redrawKeep(); return true; }
+  if(act==="invClearExample"){ removeInv(new Set(state.inventory.filter(d=>/^ex/.test(d.id)).map(d=>d.id))); save(); redrawKeep(); return true; }
+  if(act==="invRemove"){
+    if(a.dataset.confirm!=="1"){ a.dataset.confirm="1"; a.textContent="Tap again to remove"; setTimeout(()=>{ if(a.isConnected){ a.dataset.confirm=""; a.textContent="Remove from inventory"; } },3000); return true; }
+    removeInv(new Set([a.dataset.dev])); save(); redrawKeep("#invSearch"); return true;
+  }
+  if(act==="invAdd"){
+    const val=id=>{ const el=document.getElementById(id); return el? el.value.trim() : ""; };
+    const model=val("na_model").slice(0,120), serial=val("na_serial").slice(0,80);
+    invAdded="";
+    if(!model && !serial){ invMsg="Enter a make and model or a serial or asset tag first."; redrawKeep("#na_model"); return true; }
+    if(serial && state.inventory.some(d=>normName(d.serial)===normName(serial))){ invMsg="A device with that serial or asset tag is already in the inventory."; redrawKeep("#na_serial"); return true; }
+    const type=DEVICE_TYPES.some(x=>x.id===val("na_type"))? val("na_type") : "other";
+    const d=newDevice(type); d.id=uid("i"); d.model=model; d.serial=serial; d.assignedTo=val("na_assigned").slice(0,200);
+    const os=val("na_os"); d.os = DEVICE_OS.some(o=>o.id===os)? os : guessOS(model);
+    const st=val("na_status"); d.invStatus = INV_STATUS.some(s=>s.id===st)? st : "inuse";
+    state.inventory.push(d); save();
+    invMsg="Added "+devName(d)+" to the inventory."; invAdded=d.id; redrawKeep("#na_model"); return true;
+  }
+  if(act==="invImport"){
+    const fi=document.createElement("input"); fi.type="file"; fi.accept=".csv,text/csv";
+    fi.addEventListener("change",()=>{
+      const file=fi.files&&fi.files[0]; if(!file) return;
+      if(/\.xlsx?$/i.test(file.name)){ importMsg="That is an Excel workbook. In Excel use File, Save As, and pick CSV, then import that file."; redrawKeep(); return; }
+      if(file.size>10000000){ importMsg="That file is too big. Split it into smaller files in Excel first."; redrawKeep(); return; }
+      const rd=new FileReader();
+      rd.onload=()=>{
+        const have=new Set(state.inventory.map(x=>normName(x.serial)).filter(Boolean)); let skipped=0, full=0;
+        const n=importDevicesCSV(String(rd.result||""), state.inventory, (d,st)=>{
+          if(state.inventory.length>=5000){ full++; return false; }
+          const k=normName(d.serial); if(k && have.has(k)){ skipped++; return false; } if(k) have.add(k);
+          d.id=uid("i");
+          d.invStatus = parseInvStatus(st) || (d.next==="disposed"||d.next==="recycled"? "retired" : d.next==="storage"? "storage" : d.assignedTo? "inuse" : "storage");
+        });
+        importMsg = n<0 ? "Could not find a make and model or serial column. Try the blank template."
+          : (n>0 ? "Imported "+n+" device"+(n===1?"":"s")+" into the inventory." : skipped ? "No new devices." : "No devices found in that file.")
+            + (skipped? " Skipped "+skipped+" already in the inventory or listed twice." : "") + (full? " The inventory holds up to 5,000 devices, so "+full+" were left out." : "");
+        if(n>0) save();
+        redrawKeep();
+      };
+      rd.readAsText(file);
+    });
+    fi.click(); return true;
+  }
+  if(act==="invCSV"){
+    const R=reportLists(), day=todayISO(), r=a.dataset.report;
+    if(r==="counts"){
+      const rows=[["Status","Devices"]].concat(INV_STATUS.map(s=>[s.label, state.inventory.filter(d=>d.invStatus===s.id).length])).concat([["Total",state.inventory.length]]);
+      saveFile("﻿"+rows.map(x=>x.map(csvCell).join(",")).join("\r\n"), "inventory-status-counts-"+day+".csv", "text/csv;charset=utf-8"); return true;
+    }
+    const pick={all:[state.inventory,[]], stale:[R.stale,[["Days since update",d=>patchAge(d)]]], missing:[R.missing,[]], warranty:[R.warranty,[["Days until warranty ends",d=>warrantyDays(d)]]]}[r];
+    if(pick) saveFile(invCSV(pick[0],pick[1]), "inventory-"+({all:"all-devices",stale:"needs-updates",missing:"missing",warranty:"warranty-90-days"}[r])+"-"+day+".csv", "text/csv;charset=utf-8");
+    return true;
+  }
+  return false;
+}
+
+/* ---------- backup and restore ---------- */
+function viewData(){
+  const p=pendingRestore;
+  return '<section class="panel datapanel"><div><h2>Your data</h2><p class="muted">A backup is one file with everything: the offboarding checklist, its devices and the whole inventory.</p></div>'+
+    '<div class="banner warn"><span><b>Your data is saved only in this browser on this device.</b> Clearing your browser data, using a private window, or switching browsers or computers loses it. Download a backup often.</span></div>'+
+    (saveFailed? '<div class="banner warn"><span><b>This browser could not save your last change.</b> Its storage may be full or turned off. Download a backup now so you do not lose your work.</span></div>' : '')+
+    (p? '<div class="banner"><span><b>Restore this backup?</b> '+esc(p.summary)+' Restoring replaces everything in this browser now.</span><span class="rowbtns"><button class="btn primary" type="button" data-act="restoreYes">Restore</button><button class="btn" type="button" data-act="restoreNo">Cancel</button></span></div>' : '')+
+    '<div class="rowbtns">'+(TOP? '<button class="btn" type="button" data-act="backup">Download backup</button>' : '')+'<button class="btn" type="button" data-act="restore">Restore backup</button></div>'+
+    (restoreMsg? '<small role="status" id="restoreMsg">'+esc(restoreMsg)+'</small>' : '')+
+    '<small class="muted">The backup file holds names, serial numbers and notes, so keep it somewhere safe, like your other staff records.</small></section>';
+}
+function renderData(){ document.getElementById("dataPanel").innerHTML=viewData(); }
+/* check a backup file before anything changes: wrong, broken or edited files are turned away or cleaned */
+function readBackup(text){
+  let p; try{ p=JSON.parse(text); }catch(e){ return {err:"That file could not be read. Pick a backup file downloaded from this app. Nothing was changed."}; }
+  if(!p || typeof p!=="object" || Array.isArray(p) || p.app!==BACKUP_APP || !p.data || typeof p.data!=="object") return {err:"That file is not a Click by Click Access backup. Nothing was changed."};
+  const s=normalizeState(p.data);
+  if(!s) return {err:"That backup is damaged or was edited in a way this app cannot read. Nothing was changed."};
+  const raw=k=>Array.isArray(p.data[k])? p.data[k].length : 0;
+  const dropped=Math.max(0, raw("inventory")-s.inventory.length)+Math.max(0, raw("devices")-s.devices.length);
+  const when = typeof p.saved==="string" && !isNaN(Date.parse(p.saved)) ? " Saved "+new Date(p.saved).toLocaleString("en-US")+"." : "";
+  const summary = "It has "+s.inventory.length+" inventory device"+(s.inventory.length===1?"":"s")+" and the offboarding checklist for "+(s.intake.role? '"'+s.intake.role+'"' : "an unnamed person")+
+    " with "+s.devices.length+" device"+(s.devices.length===1?"":"s")+"."+when+(dropped? " "+dropped+" entr"+(dropped===1?"y":"ies")+" could not be read and will be left out." : "");
+  return {state:s, summary:summary};
+}
+const dataPanel=document.getElementById("dataPanel");
+dataPanel.addEventListener("click",e=>{
+  const a=e.target.closest("[data-act]"); if(!a) return; const act=a.dataset.act;
+  if(act==="backup"){
+    saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.1", saved:new Date().toISOString(), data:state}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json");
+    restoreMsg="Backup downloaded."; renderData(); return;
+  }
+  if(act==="restore"){
+    const fi=document.createElement("input"); fi.type="file"; fi.accept=".json,application/json";
+    fi.addEventListener("change",()=>{
+      const file=fi.files&&fi.files[0]; if(!file) return;
+      pendingRestore=null;
+      if(file.size>20000000){ restoreMsg="That file is too big to be a backup from this app. Nothing was changed."; renderData(); return; }
+      const rd=new FileReader();
+      rd.onload=()=>{ const r=readBackup(String(rd.result||"")); if(r.err){ restoreMsg=r.err; } else { pendingRestore=r; restoreMsg=""; } renderData();
+        const b=dataPanel.querySelector('[data-act="restoreYes"]'); if(b) b.focus(); };
+      rd.onerror=()=>{ restoreMsg="That file could not be read. Nothing was changed."; renderData(); };
+      rd.readAsText(file);
+    });
+    fi.click(); return;
+  }
+  if(act==="restoreNo"){ pendingRestore=null; restoreMsg="Restore canceled. Nothing was changed."; renderData(); return; }
+  if(act==="restoreYes" && pendingRestore){
+    const tab=state.tab; state=pendingRestore.state; state.tab=tab; pendingRestore=null;
+    openMore.clear(); openInv.clear(); learnOpen.clear(); learnClosed.clear(); invQuery=""; invFilter="all"; invMsg=""; importMsg="";
+    save(); restoreMsg = saveFailed? "Restored for now, but this browser could not save it. Its storage may be full or turned off." : "Backup restored.";
+    render(); const m=document.getElementById("restoreMsg"); if(m) m.scrollIntoView({block:"center"});
+  }
+});
+
+/* each main tab has its own step bar; Onboarding has none until it is built */
+const OFF_STEPS = [["intake",'Intake<span class="lbl-long"> questions</span>'],["list","Checklist"],["record","Record"]];
+const INV_STEPS = [["all","All devices"],["add",'Add<span class="lbl-long"> or import</span>'],["reports","Reports"]];
 function render(){
-  const v = document.getElementById("view");
-  v.innerHTML = state.step==="list" ? viewList() : state.step==="record" ? viewRecord() : viewIntake();
-  document.querySelectorAll("nav.steps button").forEach(b=>{ if(b.dataset.step===state.step) b.setAttribute("aria-current","step"); else b.removeAttribute("aria-current"); });
-  document.getElementById("learnMore").innerHTML = viewLearnMore();
+  const tab = state.tab, v = document.getElementById("view");
+  document.querySelectorAll("nav.tabs button").forEach(b=>{ if(b.dataset.tab===tab) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+  const bar = tab==="off"? OFF_STEPS : tab==="inv"? INV_STEPS : null, cur = tab==="off"? state.step : state.invStep, nav = document.getElementById("steps");
+  nav.hidden = !bar;
+  if(bar){ nav.setAttribute("aria-label", tab==="off"? "Offboarding steps" : "Inventory steps");
+    nav.innerHTML = bar.map((s,n)=>'<button type="button" data-step="'+s[0]+'"'+(s[0]===cur?' aria-current="step"':'')+'><span class="n">'+(n+1)+'</span><span>'+s[1]+'</span></button>').join(""); }
+  document.getElementById("card").hidden = tab!=="off";
+  document.querySelector(".top .actions").hidden = tab!=="off";
+  v.innerHTML = tab==="on" ? viewOnboarding()
+    : tab==="inv" ? (state.invStep==="add" ? viewInvAdd() : state.invStep==="reports" ? viewInvReports() : viewInvAll())
+    : state.step==="list" ? viewList() : state.step==="record" ? viewRecord() : viewIntake();
+  document.getElementById("learnMore").innerHTML = tab==="on"? "" : viewLearnMore();
+  document.getElementById("dataPanel").innerHTML = viewData();
   const lb=document.getElementById("btnLearn"); lb.setAttribute("aria-pressed", String(!!state.learn)); lb.textContent = "Learn mode: "+(state.learn?"On":"Off");
   renderCard();
 }
 function go(step){ importMsg=""; state.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
+function goInv(step){ importMsg=""; invMsg=""; state.invStep=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
+function setTab(tab){ importMsg=""; invMsg=""; state.tab=tab; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
 
 /* ---------- events ---------- */
-document.querySelector("nav.steps").addEventListener("click",e=>{ const b=e.target.closest("button[data-step]"); if(b) go(b.dataset.step); });
+document.querySelector("nav.tabs").addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); });
+document.getElementById("steps").addEventListener("click",e=>{ const b=e.target.closest("button[data-step]"); if(!b) return; if(state.tab==="inv") goInv(b.dataset.step); else go(b.dataset.step); });
 
 const view = document.getElementById("view");
 view.addEventListener("input",e=>{
   const el=e.target; const i=state.intake;
+  if(el.id==="invSearch"){ invQuery=el.value.slice(0,100); const t=document.getElementById("invTable"); if(t) t.innerHTML=invTableHTML(); return; }
   if(el.id==="role"||el.id==="doneBy"||el.id==="lastDay"||el.id==="other"){ i[el.id]=el.value; }
   else if(el.dataset.note){ const s=Object.assign({},itemState(el.dataset.note)); s.note=el.value; state.items[el.dataset.note]=s; save(); return; }
   else if(el.dataset.dev && el.dataset.field && (el.tagName==="INPUT"||el.tagName==="TEXTAREA")){
-    const dv=state.devices.find(x=>x.id===el.dataset.dev); if(!dv) return;
-    let v=el.value; if(el.dataset.field==="due" && v===i.lastDay) v=""; /* back to following the last day */
+    const dv=findDev(el.dataset.dev); if(!dv) return;
+    let v=el.value; if(el.dataset.field==="due" && v===i.lastDay && !isInv(dv)) v=""; /* back to following the last day */
     dv[el.dataset.field]=v; save();
     /* dates change the warning and the dates line, so refresh those in place (redrawing would interrupt typing) */
     if(el.type==="date") refreshDevInfo(dv);
+    if(isInv(dv)){ const r=view.querySelector('tr[data-invrow="'+dv.id+'"]'); if(r) r.innerHTML=invRowCells(dv); }
     return;
   }
   else return;
@@ -1281,14 +1708,14 @@ view.addEventListener("change",e=>{
   else if(el.name==="admin") i.admin = el.value==="yes";
   else if(el.id==="lastDay") i.lastDay=el.value;
   else if(el.dataset.reg){ i.regs[el.dataset.reg]=el.checked; }
-  else if(el.dataset.dev && el.dataset.acc){ const dv=state.devices.find(x=>x.id===el.dataset.dev); if(dv){ dv.acc[el.dataset.acc]=el.checked; save(); } return; }
+  else if(el.dataset.dev && el.dataset.acc){ const dv=findDev(el.dataset.dev); if(dv){ dv.acc[el.dataset.acc]=el.checked; save(); } return; }
   else if(el.dataset.dev && el.tagName==="SELECT"){
-    const dv=state.devices.find(x=>x.id===el.dataset.dev); if(!dv) return;
+    const dv=findDev(el.dataset.dev); if(!dv) return;
     const f=el.dataset.field; dv[f]=el.value;
     if(f==="updReq" && el.value==="yes" && !dv.updReqDate) dv.updReqDate=todayISO();
     save();
     /* these change which fields show, the encryption name or a filled-in date, so redraw and keep focus */
-    if(["type","os","next","updReq"].indexOf(f)!==-1){
+    if(["type","os","next","updReq","invStatus"].indexOf(f)!==-1){
       const y=window.scrollY; render(); window.scrollTo(0,y);
       const again=view.querySelector('select[data-dev="'+dv.id+'"][data-field="'+f+'"]'); if(again) again.focus({preventScroll:true});
     } else { renderCard(); updateCount(); }
@@ -1301,6 +1728,7 @@ view.addEventListener("change",e=>{
     const t=todayISO();
     if((el.value==="returned"||el.value==="wiped") && !dv.returned) dv.returned=t;
     if(el.value==="wiped" && hasOS(dv) && !dv.wiped) dv.wiped=t;
+    syncToInventory(dv);
     save(); const y=window.scrollY; render(); window.scrollTo(0,y);
     const again=view.querySelector('input[data-devstatus="'+dv.id+'"][value="'+dv.status+'"]'); if(again) again.focus({preventScroll:true});
     return;
@@ -1318,9 +1746,11 @@ function updateCount(){ const el=document.getElementById("buildCount"); if(el) e
 
 view.addEventListener("click",e=>{
   const g=e.target.closest("[data-go]"); if(g){ go(g.dataset.go); return; }
+  if(invClick(e)) return;
   const a=e.target.closest("[data-act]"); if(!a) return;
   const act=a.dataset.act;
   if(act==="new"){ startNew(); return; }
+  if(act==="loadInv"){ importMsg=loadFromInventory(); save(); const y=window.scrollY; render(); window.scrollTo(0,y); const b=view.querySelector('[data-act="loadInv"]'); if(b) b.focus({preventScroll:true}); return; }
   if(act==="copy"){ copyRecord(a); return; }
   if(act==="download"){ download(); return; }
   if(act==="print"){ window.print(); return; }
@@ -1393,10 +1823,12 @@ const btnNew=document.getElementById("btnNew");
 function startNew(){
   if(!state.example && !confirmNew){ confirmNew=true; btnNew.textContent="Tap again to clear"; setTimeout(()=>{confirmNew=false; btnNew.textContent="Start new";},3000); return; }
   confirmNew=false; btnNew.textContent="Start new";
-  const learn=state.learn; state=blank(); state.learn=learn; state.intake.lastDay=isoDate(new Date()); save(); render();
+  state=Object.assign(blank(), keepApp()); state.intake.lastDay=isoDate(new Date()); save(); render();
 }
+/* Start new and Load example replace only the offboarding person, never the inventory */
+function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory}; }
 btnNew.addEventListener("click",startNew);
-document.getElementById("btnExample").addEventListener("click",()=>{ const learn=state.learn; state=example(); state.learn=learn; save(); render(); });
+document.getElementById("btnExample").addEventListener("click",()=>{ state=Object.assign(example(), keepApp()); save(); render(); });
 /* Learn mode opens or closes every explanation, the glossary and the sources at once */
 document.getElementById("btnLearn").addEventListener("click",()=>{
   state.learn=!state.learn; learnOpen.clear(); learnClosed.clear(); save();
