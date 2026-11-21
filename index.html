@@ -290,7 +290,7 @@ select.pickperson{width:auto; max-width:100%}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.2 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.2.1 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
@@ -1638,7 +1638,7 @@ const dataPanel=document.getElementById("dataPanel");
 dataPanel.addEventListener("click",e=>{
   const a=e.target.closest("[data-act]"); if(!a) return; const act=a.dataset.act;
   if(act==="backup"){
-    saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.2", saved:new Date().toISOString(), data:state}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json");
+    saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.2.1", saved:new Date().toISOString(), data:state}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json");
     restoreMsg="Backup downloaded."; renderData(); return;
   }
   if(act==="restore"){
@@ -1667,6 +1667,7 @@ dataPanel.addEventListener("click",e=>{
 /* ================= v2.2 (Access only): Onboarding ================= */
 /* framework tags, glossary terms and sources used only by onboarding */
 Object.assign(TAGS, {
+  aa03:{label:"NIST CSF 2.0 PR.AA-03", url:"https://doi.org/10.6028/NIST.CSWP.29", about:"Users, services, and hardware are authenticated"},
   at01:{label:"NIST CSF 2.0 PR.AT-01", url:"https://doi.org/10.6028/NIST.CSWP.29", about:"Personnel are given awareness and training so they can do their work with cybersecurity risks in mind"},
   cis14:{label:"CIS Controls v8.1: 14", url:"https://www.cisecurity.org/controls/security-awareness-and-skills-training", about:"Security Awareness and Skills Training"}
 });
@@ -1678,7 +1679,7 @@ GLOSSARY.push(
 );
 GLOSSARY.sort((a,b)=>a[0].localeCompare(b[0]));
 SOURCES.push(
-  ["NIST CSF 2.0 PR.AT-01 (onboarding)","Awareness and training, used for the security basics talk, the acceptable use policy and the training check.",[["CSF 2.0 document","https://doi.org/10.6028/NIST.CSWP.29"]]],
+  ["NIST CSF 2.0 PR.AA-03 and PR.AT-01 (onboarding)","PR.AA-03 authentication, used for the MFA steps. PR.AT-01 awareness and training, used for the security basics talk, the acceptable use policy and the training check.",[["CSF 2.0 document","https://doi.org/10.6028/NIST.CSWP.29"]]],
   ["CIS Controls v8.1, Control 14 (onboarding)","Security Awareness and Skills Training.",[["Control 14",TAGS.cis14.url]]]
 );
 const ON_TASKS = [
@@ -1747,8 +1748,8 @@ const ON_DEV_STEPS = [
     why:"Update the operating system and apps before you hand it out. Checking this sets today as the last updated date in the inventory."},
   {id:"on_dev_av", phase:"before", area:"Endpoint", sets:"av", title:"Make sure antivirus is on for {dev}",
     why:"Microsoft Defender is built into Windows. Check that it is on and up to date. Checking this marks antivirus as on in the inventory."},
-  {id:"on_dev_recheck", phase:"after", area:"Endpoint", sets:"patched", title:"Check that {dev} {is} still patched",
-    why:"Updates come out every month. Checking this sets today as the last updated date in the inventory."}
+  {id:"on_dev_recheck", phase:"after", area:"Endpoint", sets:"patched", title:"Install any new updates on {dev}",
+    why:"Updates come out every month. Checking this means you installed them, and sets today as the last updated date in the inventory."}
 ];
 Object.assign(LEARN, {
   on_acct_email:["Each person needs their own login so you can see who did what and turn off one person without locking out everyone. Giving only the mailboxes and groups their job needs limits what a stolen password can reach.",["aa01","aa05","cis5","cis6"]],
@@ -1759,16 +1760,16 @@ Object.assign(LEARN, {
   on_acct_web:["Whoever controls the website and domain controls your public face and where your email goes. The lowest role that fits keeps mistakes and break ins small.",["aa05","cis6"]],
   on_pwm:["A password manager keeps shared logins out of email, chats and sticky notes. Giving only the vaults they need means less to change when they leave.",["aa01","aa05","cis5"]],
   on_acct_personal:["Work email on a personal phone is handy but easy to lose. A screen lock and managed work apps protect work data without touching their personal things.",["aa01","cis6"]],
-  on_mfa:["Most account takeovers start with a stolen or guessed password. MFA stops most of them, even when the password is known.",["aa01","cis6"]],
+  on_mfa:["Most account takeovers start with a stolen or guessed password. MFA stops most of them, even when the password is known.",["aa01","aa03","cis6"]],
   on_admin:["Admin rights can change settings, read other people's data and create accounts. Keeping them in a separate account means a phishing email that fools their everyday login cannot do admin damage.",["aa05","cis5","cis6"]],
   on_other:["Systems you add yourself are easy to forget. Their own login with limited access keeps the system on your list for the day they leave.",["aa01","aa05","cis5"]],
   on_dev_enc:["Encryption keeps files unreadable if a device is lost or stolen. It is one of the cheapest ways to protect client data.",["am08","cis1"]],
   on_dev_mdm:["Device management lets you push updates, check settings and lock or wipe a lost device. It also makes offboarding much faster.",["am08","cis1"]],
-  on_dev_patch:["Most attacks use problems that already have a fix. Installing updates before you hand a device out closes those holes on day one.",["am08","cis1"]],
+  on_dev_patch:["Many attacks use problems that already have a fix. Installing updates before you hand a device out closes those holes on day one.",["am08","cis1"]],
   on_dev_av:["Antivirus catches many common threats before they spread. Checking that it is on takes a minute and protects every file they open.",["am08","cis1"]],
-  on_mfa_check:["MFA that was never tested may not work when it matters. Setting it up together also shows them what a real prompt looks like.",["aa01","cis6"]],
+  on_mfa_check:["MFA that was never tested may not work when it matters. Setting it up together also shows them what an approval prompt looks like.",["aa01","aa03","cis6"]],
   on_aup:["The policy tells people clearly what is and is not allowed with your accounts and devices. A signed copy shows they were told.",["at01","cis14"]],
-  on_basics:["Most attacks start with a phishing message, so people are your first line of defense. A short talk on day one makes it much more likely they will spot one and report it.",["at01","cis14"]],
+  on_basics:["Phishing is one of the most common ways attackers get in, so people are your first line of defense. A short talk on day one makes it much more likely they will spot one and report it.",["at01","cis14"]],
   on_keys:["Keys, badges and alarm codes are access to your building. Writing down which ones they got makes collecting them easy when they leave.",["aa05","cis6"]],
   on_groups:["Group chats, mailing lists and shared drives often carry internal plans and client details. Adding only the right ones keeps information with the people who need it.",["aa05","cis6"]],
   on_review:["Access tends to grow in the first weeks as people ask for things. A check at 30 days removes anything they do not need.",["aa05","cis5","cis6"]],
@@ -1782,7 +1783,7 @@ const ON_STEPS = [["intake",'Intake<span class="lbl-long"> questions</span>'],["
 let onbMsg = "";
 
 function nextMonday(){ const d=new Date(); const add=(1-d.getDay()+7)%7||7; return isoDate(addDays(d,add)); }
-function blankOnb(){ return {step:"intake", example:false, intake:{role:"", type:"staff", startDate:"", doneBy:"", admin:false, adminWhy:"", systems:[], other:""}, items:{}, devices:[]}; }
+function blankOnb(){ return {step:"intake", example:false, intake:{role:"", type:"staff", startDate:"", doneBy:"", admin:false, adminWhy:"", systems:[], other:""}, items:{}, devices:[], sets:{}}; }
 function exampleOnb(){
   const o=blankOnb(); o.example=true;
   o.intake={role:"Program assistant", type:"staff", startDate:nextMonday(), doneBy:"Office manager", admin:false, adminWhy:"", systems:["email","cloud","database","sharedpw","laptop","keys"], other:"Scheduling app"};
@@ -1814,7 +1815,20 @@ function normalizeOnb(o){
   return {step: ["intake","list","record"].indexOf(o.step)!==-1? o.step : "intake", example: o.example===true,
     intake:{role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", startDate:iso(i.startDate), doneBy:str(i.doneBy,200),
       admin: i.admin===true, adminWhy:str(i.adminWhy,300), systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000)},
-    items: cleanItems(o.items), devices: devices};
+    items: cleanItems(o.items), devices: devices, sets: cleanSets(o.sets)};
+}
+/* what each checked device step changed in the inventory, so unchecking it can put it back (v2.2 saves have none) */
+function cleanSets(src){
+  /* defined in here because the save is loaded before later constants exist */
+  const SET_OK = {enc:v=>ENC_STATUS.some(x=>x.id===v), mdm:v=>v===""||v==="yes"||v==="no", av:v=>v===""||v==="yes"||v==="no", patched:v=>v===""||/^\d{4}-\d{2}-\d{2}$/.test(v)};
+  const out={};
+  if(src && typeof src==="object" && !Array.isArray(src)) Object.keys(src).forEach(k=>{
+    if(!/^on_dev_[a-z]{1,20}$/.test(k) || !Array.isArray(src[k])) return;
+    out[k]=src[k].slice(0,100).filter(u=>u && typeof u==="object" && typeof u.invId==="string" && /^[A-Za-z0-9_-]{1,60}$/.test(u.invId) &&
+      SET_OK.hasOwnProperty(u.field) && typeof u.before==="string" && typeof u.after==="string" && SET_OK[u.field](u.before) && SET_OK[u.field](u.after))
+      .map(u=>({invId:u.invId, field:u.field, before:u.before, after:u.after}));
+  });
+  return out;
 }
 
 /* ---------- onboarding data ---------- */
@@ -1893,10 +1907,23 @@ function onbPick(invId){
   if(!state.inventory.some(d=>d.id===invId) || state.onb.devices.some(e=>e.invId===invId)) return;
   state.onb.devices.push({invId:invId, assignedBy:state.onb.intake.doneBy.trim(), dateAssigned:todayISO(), handed:false, at:null, prev:null});
 }
-/* checking a device step records it on their devices in the inventory */
+/* checking a device step records it on their devices in the inventory, and remembers what was there before */
 function onbApplySets(t){
   if(!t.sets) return;
-  onbDataDevs().forEach(d=>{ if(t.sets==="enc") d.enc="on"; else if(t.sets==="patched") d.patched=todayISO(); else d[t.sets]="yes"; });
+  const f=t.sets, after = f==="enc"? "on" : f==="patched"? todayISO() : "yes";
+  state.onb.sets[t.id] = onbDataDevs().map(d=>{ const u={invId:d.id, field:f, before:d[f]||"", after:after}; d[f]=after; return u; });
+}
+/* unchecking puts back what was there before it was checked, unless someone changed the value since.
+   If another checked step changed the same value later, that step takes over the older value instead. */
+function onbUndoSets(id){
+  const list=state.onb.sets[id]; delete state.onb.sets[id];
+  if(!list) return;
+  list.forEach(u=>{
+    const d=state.inventory.find(x=>x.id===u.invId); if(!d) return;
+    const later=[].concat(...Object.values(state.onb.sets)).find(v=>v.invId===u.invId && v.field===u.field && v.before===u.after);
+    if(later){ later.before=u.before; return; }
+    if((d[u.field]||"")===u.after) d[u.field]=u.before;
+  });
 }
 
 /* ---------- onboarding views ---------- */
@@ -2109,10 +2136,12 @@ function onbClick(e){
   if(act==="onbCSV"){ saveFile(onbCSV(), "access-granted-"+(o.intake.startDate||todayISO())+".csv", "text/csv;charset=utf-8"); return true; }
   const row=a.closest('.item[data-onb]'); if(!row) return false;
   const id=row.dataset.id, s=Object.assign({},onbItemState(id));
+  const wasDone = s.status==="done";
   if(act==="toggle"){ if(s.status==="done"){ s.status="open"; s.at=null; } else { s.status="done"; s.at=Date.now(); const t=onbTasks().find(x=>x.id===id); if(t) onbApplySets(t); } }
   else if(act==="skip"){ s.status = s.status==="na" ? "open" : "na"; s.at=null; }
   else if(act==="note"){ const ta=row.querySelector("textarea"); ta.hidden=false; ta.focus(); return true; }
   else return false;
+  if(wasDone && s.status!=="done") onbUndoSets(id); /* unchecked or marked not needed */
   o.items[id]=s; save(); redrawKeep('.item[data-id="'+id+'"] [data-act="'+act+'"]');
   return true;
 }
