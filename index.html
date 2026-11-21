@@ -217,6 +217,11 @@ tr.invedit > td{background:var(--bg); padding:14px}
 .stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px}
 .rephead{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:baseline; justify-content:space-between}
 .datapanel{gap:12px}
+/* v2.2: onboarding */
+select.pickperson{width:auto; max-width:100%}
+.pickrow{display:flex; flex-wrap:wrap; gap:8px; align-items:center} .pickrow select{flex:1 1 16em; width:auto; min-width:0}
+#onbNewBox{border:1px dashed var(--line); border-radius:8px; padding:8px 10px}
+.ddcard p{margin:6px 0 0}
 
 @media (max-width:620px){
   nav.tabs button{font-size:13px; padding:10px 4px}
@@ -285,7 +290,7 @@ tr.invedit > td{background:var(--bg); padding:14px}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.1 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.2 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
@@ -697,7 +702,7 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;",
 
 function nextFriday(){const d=new Date(); const add=(5-d.getDay()+7)%7||7; return isoDate(addDays(d,add))}
 function blankRegs(){ return {hipaa:false, pci:false, ferpa:false, hold:false}; }
-function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs()}, items:{}, devices:[]} }
+function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], onb:exampleOnb(), intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs()}, items:{}, devices:[]} }
 function example(){
   const s = blank(); s.example = true;
   s.intake = {role:"Volunteer events lead", type:"volunteer", departure:"planned", lastDay:nextFriday(), doneBy:"Office manager", admin:false,
@@ -758,13 +763,9 @@ function normalizeState(s){
     intake: {role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", departure: i.departure==="unplanned"? "unplanned" : "planned",
       lastDay: typeof i.lastDay==="string" && /^\d{4}-\d{2}-\d{2}$/.test(i.lastDay)? i.lastDay : "", doneBy:str(i.doneBy,200), admin: i.admin===true,
       systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000), regs:r},
-    items: {}, devices: cleanDevices(s.devices, false), inventory: cleanDevices(s.inventory, true)
+    items: cleanItems(s.items), devices: cleanDevices(s.devices, false), inventory: cleanDevices(s.inventory, true),
+    onb: normalizeOnb(s.onb)
   };
-  if(s.items && typeof s.items==="object" && !Array.isArray(s.items)) Object.keys(s.items).slice(0,500).forEach(k=>{
-    const v=s.items[k];
-    if(!/^[A-Za-z0-9_]{1,80}$/.test(k) || k==="__proto__" || k==="constructor" || k==="prototype" || !v || typeof v!=="object") return;
-    out.items[k] = {status: ["open","done","na"].indexOf(v.status)!==-1? v.status : "open", note:str(v.note,2000), at: Number.isFinite(v.at) && Math.abs(v.at)<8.64e15? v.at : null};
-  });
   /* a device id must point to one device only */
   const invIds=new Set(out.inventory.map(d=>d.id));
   out.devices.forEach(d=>{ while(invIds.has(d.id)) d.id+="o"; });
@@ -1060,6 +1061,7 @@ function personLabel(){ const i=state.intake; return i.role ? i.role : "Departin
 
 /* ---------- card ---------- */
 function renderCard(){
+  if(state.tab==="on"){ renderOnbCard(); return; }
   const c = totals();
   const pct = c.total? Math.round((c.done+c.na+c.paused)/c.total*100) : 0;
   const i = state.intake;
@@ -1070,6 +1072,18 @@ function renderCard(){
   const closed = c.total>0 && c.open===0;
   document.getElementById("card").classList.toggle("closed", closed);
   document.getElementById("cardStatus").textContent = closed ? "Access removed" : c.open+" open";
+}
+
+/* Access only: the same card for the person starting */
+function renderOnbCard(){
+  const c=onbTotals(), i=state.onb.intake, sd=parseDate(i.startDate);
+  const pct=c.total? Math.round((c.done+c.na)/c.total*100) : 0;
+  document.getElementById("cardWho").textContent = onbPerson();
+  document.getElementById("cardSub").textContent = (i.type==="volunteer"?"Volunteer":i.type==="board"?"Board member":"Staff")+" · "+(sd? "Starts "+sd.toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "Start date not set")+" · "+(c.done+c.na)+" of "+c.total+" steps";
+  document.getElementById("cardBar").style.width = pct+"%";
+  const closed = c.total>0 && c.open===0;
+  document.getElementById("card").classList.toggle("closed", closed);
+  document.getElementById("cardStatus").textContent = closed ? "Access ready" : c.open+" open";
 }
 
 /* ---------- views ---------- */
@@ -1130,10 +1144,10 @@ function viewDeviceInputs(){
   return '<div class="field"><span class="legend">Device inventory</span>'+
     '<small>List every organization device they have. You will check each one back in on the checklist.</small>'+
     '<div class="devlist">'+(rows || '<div class="devempty">No devices listed yet.</div>')+'</div>'+
-    '<div class="rowbtns"><button class="btn" type="button" data-act="loadInv">Load their devices from inventory</button><button class="btn" type="button" data-act="addDevice">Add device</button>'+
+    '<div class="rowbtns">'+invPersonSelect()+'<button class="btn" type="button" data-act="loadInv">Load their devices from inventory</button><button class="btn" type="button" data-act="addDevice">Add device</button>'+
     '<button class="btn" type="button" data-act="importCSV">Import from Excel (.csv)</button>'+
     (TOP? '<button class="linkbtn" type="button" data-act="csvTemplate">Download a blank template</button>' : '')+'</div>'+
-    '<small>Load their devices from inventory adds every device on the Inventory tab whose Assigned to matches their role or name above. When you check one in, the inventory updates too.</small>'+
+    '<small>Pick their name from the list, or type it above, then Load their devices from inventory adds every device on the Inventory tab assigned to them. When you check one in, the inventory updates too.</small>'+
     '<small>In Excel, filter your inventory to this person\'s devices, then use File, Save As, CSV. It reads the same columns as the blank template, plus common names like Hostname, User, Department and Warranty.</small>'+
     (importMsg? '<small id="importMsg" role="status" style="color:var(--done)">'+esc(importMsg)+'</small>' : '')+'</div>';
 }
@@ -1384,10 +1398,6 @@ function loadFromInventory(){
 }
 
 /* ---------- views ---------- */
-function viewOnboarding(){
-  return '<section class="panel"><div><h2>Onboarding</h2><p class="muted">Setting up accounts, devices and access when someone starts.</p></div>'+
-    '<div class="devempty"><b>Coming soon.</b></div></section>';
-}
 function invExampleBanner(){
   return state.inventory.some(d=>/^ex/.test(d.id)) ? '<div class="banner"><span><b>Example devices loaded.</b> These are samples so you can see how the inventory works.</span><button class="btn" type="button" data-act="invClearExample">Remove example devices</button></div>' : "";
 }
@@ -1621,14 +1631,14 @@ function readBackup(text){
   const dropped=Math.max(0, raw("inventory")-s.inventory.length)+Math.max(0, raw("devices")-s.devices.length);
   const when = typeof p.saved==="string" && !isNaN(Date.parse(p.saved)) ? " Saved "+new Date(p.saved).toLocaleString("en-US")+"." : "";
   const summary = "It has "+s.inventory.length+" inventory device"+(s.inventory.length===1?"":"s")+" and the offboarding checklist for "+(s.intake.role? '"'+s.intake.role+'"' : "an unnamed person")+
-    " with "+s.devices.length+" device"+(s.devices.length===1?"":"s")+"."+when+(dropped? " "+dropped+" entr"+(dropped===1?"y":"ies")+" could not be read and will be left out." : "");
+    " with "+s.devices.length+" device"+(s.devices.length===1?"":"s")+", and onboarding for "+(s.onb.intake.role? '"'+s.onb.intake.role+'"' : "an unnamed person")+"."+when+(dropped? " "+dropped+" entr"+(dropped===1?"y":"ies")+" could not be read and will be left out." : "");
   return {state:s, summary:summary};
 }
 const dataPanel=document.getElementById("dataPanel");
 dataPanel.addEventListener("click",e=>{
   const a=e.target.closest("[data-act]"); if(!a) return; const act=a.dataset.act;
   if(act==="backup"){
-    saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.1", saved:new Date().toISOString(), data:state}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json");
+    saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.2", saved:new Date().toISOString(), data:state}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json");
     restoreMsg="Backup downloaded."; renderData(); return;
   }
   if(act==="restore"){
@@ -1654,38 +1664,510 @@ dataPanel.addEventListener("click",e=>{
   }
 });
 
-/* each main tab has its own step bar; Onboarding has none until it is built */
+/* ================= v2.2 (Access only): Onboarding ================= */
+/* framework tags, glossary terms and sources used only by onboarding */
+Object.assign(TAGS, {
+  at01:{label:"NIST CSF 2.0 PR.AT-01", url:"https://doi.org/10.6028/NIST.CSWP.29", about:"Personnel are given awareness and training so they can do their work with cybersecurity risks in mind"},
+  cis14:{label:"CIS Controls v8.1: 14", url:"https://www.cisecurity.org/controls/security-awareness-and-skills-training", about:"Security Awareness and Skills Training"}
+});
+GLOSSARY.push(
+  ["Acceptable use policy","A short document that explains how people may use your organization's accounts, devices and data. New people read and sign it."],
+  ["Onboarding","Everything you do to set up accounts, devices and access when someone starts."],
+  ["Phishing","A fake email, text or call that tries to get someone to click a link, open a file or share a password."],
+  ["Separate admin account","A second login used only for admin work, so the everyday account cannot change settings if someone takes it over."]
+);
+GLOSSARY.sort((a,b)=>a[0].localeCompare(b[0]));
+SOURCES.push(
+  ["NIST CSF 2.0 PR.AT-01 (onboarding)","Awareness and training, used for the security basics talk, the acceptable use policy and the training check.",[["CSF 2.0 document","https://doi.org/10.6028/NIST.CSWP.29"]]],
+  ["CIS Controls v8.1, Control 14 (onboarding)","Security Awareness and Skills Training.",[["Control 14",TAGS.cis14.url]]]
+);
+const ON_TASKS = [
+  {id:"on_acct_email", phase:"before", area:"Identity", when:i=>has(i,"email"),
+    title:"Create their own email account with only the groups and shared mailboxes their role needs",
+    why:"Use their own name, never a shared login. Add shared mailboxes only if their job needs them."},
+  {id:"on_acct_cloud", phase:"before", area:"Data", when:i=>has(i,"cloud"),
+    title:"Give them access to only the shared drives and folders their role needs",
+    why:"Add them to a group for their team instead of sharing folders one at a time."},
+  {id:"on_acct_db", phase:"before", area:"Identity", when:i=>has(i,"database"),
+    title:"Create their own login to the donor or client database with the lowest role that fits",
+    why:"Most databases have read only or limited roles. Start small and add more only if they need it."},
+  {id:"on_acct_fin", phase:"before", area:"Identity", when:i=>has(i,"finance"),
+    title:"Set up their own bank, payroll or payment login with only the permissions they need",
+    why:"Get approval in writing, and never hand out the main login."},
+  {id:"on_acct_social", phase:"before", area:"Identity", when:i=>has(i,"social"),
+    title:"Add them to social media pages with their own account and the lowest role that fits",
+    why:"Use the page roles each platform offers instead of sharing a password."},
+  {id:"on_acct_web", phase:"before", area:"Edge", when:i=>has(i,"website"),
+    title:"Give them their own website or hosting login with the lowest role that fits",
+    why:"An editor role is enough for most people who update pages."},
+  {id:"on_pwm", phase:"before", area:"Identity", when:i=>has(i,"sharedpw"),
+    title:"Add them to the password manager with only the vaults they need",
+    why:"Share the vault for their team, not every vault. Shared logins come from there, not from notes or email."},
+  {id:"on_acct_personal", phase:"before", area:"Endpoint", when:i=>has(i,"personal"),
+    title:"Decide which work apps can go on their personal phone, and require a screen lock",
+    why:"Use your email app's mobile settings or device management to keep work data separate."},
+  {id:"on_mfa", phase:"before", area:"Identity", when:i=>onbHasAccounts(i),
+    title:"Turn on MFA for every account you create for them",
+    why:"Use an authenticator app where you can. Text message codes are better than nothing."},
+  {id:"on_admin", phase:"before", area:"Identity", when:i=>i.admin,
+    title:"Give them a separate admin account used only when needed",
+    why:"They use their normal account every day and sign in to the admin account only for admin work."},
+  {id:"on_mfa_check", phase:"day", area:"Identity", when:i=>onbHasAccounts(i),
+    title:"Confirm MFA works when they sign in for the first time",
+    why:"Have them sign in and approve a prompt while you are there, and help them save their backup codes somewhere safe."},
+  {id:"on_aup", phase:"day", area:"People", when:()=>true,
+    title:"Have them read and sign the acceptable use policy",
+    why:"Keep the signed copy with their HR file. If you do not have a policy yet, one page is a good start."},
+  {id:"on_basics", phase:"day", area:"People", when:()=>true,
+    title:"Go over security basics: spotting phishing, how to report something odd, and locking the screen",
+    why:"Ten minutes is enough. Tell them exactly who to contact if something looks wrong."},
+  {id:"on_keys", phase:"day", area:"Physical", when:i=>has(i,"keys"),
+    title:"Hand out keys, badges or alarm codes and write down which ones",
+    why:"Write the key or badge number in the note so you collect the same ones when they leave."},
+  {id:"on_groups", phase:"day", area:"Comms", when:()=>true,
+    title:"Add them to the right group chats, mailing lists and shared drives",
+    why:"Only the ones for their team and role."},
+  {id:"on_review", phase:"after", area:"Identity", when:()=>true,
+    title:"Confirm their access matches their role",
+    why:"Check each system above. Remove anything they were given just in case."},
+  {id:"on_training", phase:"after", area:"People", when:()=>true,
+    title:"Confirm security basics training is done",
+    why:"Write down the date and what was covered in the note."},
+  {id:"on_save", phase:"after", area:"Records", when:()=>true,
+    title:"Save this record with your HR or IT files",
+    why:"When they leave, this record is your list of what to turn off."}
+];
+/* device steps list the devices they cover; checking one also records it on those devices in the inventory */
+const ON_DEV_STEPS = [
+  {id:"on_dev_enc", phase:"before", area:"Endpoint", sets:"enc", title:"Turn on encryption on {dev}",
+    why:"BitLocker on Windows, FileVault on a Mac. Phones and tablets encrypt themselves once a passcode is set. Checking this marks encryption as on in the inventory."},
+  {id:"on_dev_mdm", phase:"before", area:"Endpoint", sets:"mdm", title:"Enroll {dev} in device management (MDM)",
+    why:"Intune, Jamf or Google Admin let you lock or wipe a device if it is ever lost. Checking this marks it as managed in the inventory."},
+  {id:"on_dev_patch", phase:"before", area:"Endpoint", sets:"patched", title:"Install all updates on {dev}",
+    why:"Update the operating system and apps before you hand it out. Checking this sets today as the last updated date in the inventory."},
+  {id:"on_dev_av", phase:"before", area:"Endpoint", sets:"av", title:"Make sure antivirus is on for {dev}",
+    why:"Microsoft Defender is built into Windows. Check that it is on and up to date. Checking this marks antivirus as on in the inventory."},
+  {id:"on_dev_recheck", phase:"after", area:"Endpoint", sets:"patched", title:"Check that {dev} {is} still patched",
+    why:"Updates come out every month. Checking this sets today as the last updated date in the inventory."}
+];
+Object.assign(LEARN, {
+  on_acct_email:["Each person needs their own login so you can see who did what and turn off one person without locking out everyone. Giving only the mailboxes and groups their job needs limits what a stolen password can reach.",["aa01","aa05","cis5","cis6"]],
+  on_acct_cloud:["Shared drives often hold client and donor files. Adding people through team groups keeps access tidy and easy to remove later.",["aa05","cis6"]],
+  on_acct_db:["Donor and client databases hold some of the most sensitive data your organization has. A limited role protects that data if their login is ever misused.",["aa01","aa05","cis5","cis6"]],
+  on_acct_fin:["Money accounts are a top target for scams. Their own login with limited permissions means every payment can be traced to one person.",["aa01","aa05","cis5","cis6"]],
+  on_acct_social:["Page roles let you add and remove people without sharing a password. Your organization keeps control of its public voice.",["aa01","aa05","cis5"]],
+  on_acct_web:["Whoever controls the website and domain controls your public face and where your email goes. The lowest role that fits keeps mistakes and break ins small.",["aa05","cis6"]],
+  on_pwm:["A password manager keeps shared logins out of email, chats and sticky notes. Giving only the vaults they need means less to change when they leave.",["aa01","aa05","cis5"]],
+  on_acct_personal:["Work email on a personal phone is handy but easy to lose. A screen lock and managed work apps protect work data without touching their personal things.",["aa01","cis6"]],
+  on_mfa:["Most account takeovers start with a stolen or guessed password. MFA stops most of them, even when the password is known.",["aa01","cis6"]],
+  on_admin:["Admin rights can change settings, read other people's data and create accounts. Keeping them in a separate account means a phishing email that fools their everyday login cannot do admin damage.",["aa05","cis5","cis6"]],
+  on_other:["Systems you add yourself are easy to forget. Their own login with limited access keeps the system on your list for the day they leave.",["aa01","aa05","cis5"]],
+  on_dev_enc:["Encryption keeps files unreadable if a device is lost or stolen. It is one of the cheapest ways to protect client data.",["am08","cis1"]],
+  on_dev_mdm:["Device management lets you push updates, check settings and lock or wipe a lost device. It also makes offboarding much faster.",["am08","cis1"]],
+  on_dev_patch:["Most attacks use problems that already have a fix. Installing updates before you hand a device out closes those holes on day one.",["am08","cis1"]],
+  on_dev_av:["Antivirus catches many common threats before they spread. Checking that it is on takes a minute and protects every file they open.",["am08","cis1"]],
+  on_mfa_check:["MFA that was never tested may not work when it matters. Setting it up together also shows them what a real prompt looks like.",["aa01","cis6"]],
+  on_aup:["The policy tells people clearly what is and is not allowed with your accounts and devices. A signed copy shows they were told.",["at01","cis14"]],
+  on_basics:["Most attacks start with a phishing message, so people are your first line of defense. A short talk on day one makes it much more likely they will spot one and report it.",["at01","cis14"]],
+  on_keys:["Keys, badges and alarm codes are access to your building. Writing down which ones they got makes collecting them easy when they leave.",["aa05","cis6"]],
+  on_groups:["Group chats, mailing lists and shared drives often carry internal plans and client details. Adding only the right ones keeps information with the people who need it.",["aa05","cis6"]],
+  on_review:["Access tends to grow in the first weeks as people ask for things. A check at 30 days removes anything they do not need.",["aa05","cis5","cis6"]],
+  on_training:["Training only helps if it happens. Writing down when it was done gives you proof for insurance forms and funders.",["at01","cis14"]],
+  on_dev_recheck:["Devices fall behind on updates when they are not restarted. A check after the first month catches that early.",["am08","cis1"]],
+  on_save:["A dated record shows exactly what access you gave and when. When they leave, it is your list of what to turn off.",["aa05","am08"]]
+});
+const ACCOUNT_SYSTEMS = ["email","cloud","database","finance","social","website","sharedpw","personal"];
+function onbHasAccounts(i){ return ACCOUNT_SYSTEMS.some(s=>has(i,s)) || !!(i.other||"").trim(); }
+const ON_STEPS = [["intake",'Intake<span class="lbl-long"> questions</span>'],["list","Checklist"],["record","Record"]];
+let onbMsg = "";
+
+function nextMonday(){ const d=new Date(); const add=(1-d.getDay()+7)%7||7; return isoDate(addDays(d,add)); }
+function blankOnb(){ return {step:"intake", example:false, intake:{role:"", type:"staff", startDate:"", doneBy:"", admin:false, adminWhy:"", systems:[], other:""}, items:{}, devices:[]}; }
+function exampleOnb(){
+  const o=blankOnb(); o.example=true;
+  o.intake={role:"Program assistant", type:"staff", startDate:nextMonday(), doneBy:"Office manager", admin:false, adminWhy:"", systems:["email","cloud","database","sharedpw","laptop","keys"], other:"Scheduling app"};
+  return o;
+}
+/* the same cleaning as the offboarding save: known fields only */
+function cleanItems(src){
+  const out={};
+  if(src && typeof src==="object" && !Array.isArray(src)) Object.keys(src).slice(0,500).forEach(k=>{
+    const v=src[k];
+    if(!/^[A-Za-z0-9_]{1,80}$/.test(k) || k==="__proto__" || k==="constructor" || k==="prototype" || !v || typeof v!=="object") return;
+    out[k] = {status: ["open","done","na"].indexOf(v.status)!==-1? v.status : "open", note: typeof v.note==="string"? v.note.slice(0,2000) : "", at: Number.isFinite(v.at) && Math.abs(v.at)<8.64e15? v.at : null};
+  });
+  return out;
+}
+function normalizeOnb(o){
+  /* v2.1 and older saves have no onboarding: start with the example */
+  if(!o || typeof o!=="object" || Array.isArray(o) || !o.intake || typeof o.intake!=="object" || Array.isArray(o.intake)) return exampleOnb();
+  const i=o.intake, str=(v,n)=> typeof v==="string"? v.slice(0,n) : "", iso=v=> typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v)? v : "";
+  const seen=new Set(), devices=[];
+  (Array.isArray(o.devices)? o.devices : []).slice(0,100).forEach(e=>{
+    if(!e || typeof e!=="object" || typeof e.invId!=="string" || !/^[A-Za-z0-9_-]{1,60}$/.test(e.invId) || seen.has(e.invId)) return;
+    seen.add(e.invId);
+    const p=e.prev && typeof e.prev==="object" && !Array.isArray(e.prev) ? {invStatus: INV_STATUS.some(s=>s.id===e.prev.invStatus)? e.prev.invStatus : "storage",
+      assignedTo:str(e.prev.assignedTo,200), assignedBy:str(e.prev.assignedBy,200), dateAssigned:iso(e.prev.dateAssigned)} : null;
+    devices.push({invId:e.invId, assignedBy:str(e.assignedBy,200), dateAssigned:iso(e.dateAssigned), handed:e.handed===true,
+      at: Number.isFinite(e.at) && Math.abs(e.at)<8.64e15? e.at : null, prev: e.handed===true? p : null});
+  });
+  return {step: ["intake","list","record"].indexOf(o.step)!==-1? o.step : "intake", example: o.example===true,
+    intake:{role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", startDate:iso(i.startDate), doneBy:str(i.doneBy,200),
+      admin: i.admin===true, adminWhy:str(i.adminWhy,300), systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000)},
+    items: cleanItems(o.items), devices: devices};
+}
+
+/* ---------- onboarding data ---------- */
+function onbPerson(){ return state.onb.intake.role.trim() || "New person"; }
+function onbItemState(id){ return state.onb.items[id] || {status:"open", note:"", at:null}; }
+/* picked devices that are still in the inventory */
+function onbDevs(){ return state.onb.devices.map(e=>({e:e, d:state.inventory.find(x=>x.id===e.invId)})).filter(x=>x.d); }
+function onbDataDevs(){ return onbDevs().map(x=>x.d).filter(hasOS); }
+function onbTasks(){
+  const i=state.onb.intake;
+  const list=ON_TASKS.filter(t=>t.when(i)).map(t=>Object.assign({},t));
+  (i.other||"").split(/[,\n;]/).map(x=>x.trim()).filter(Boolean).forEach((o,idx)=>{
+    const id="on_other_"+idx+"_"+o.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,24);
+    LEARN[id]=LEARN.on_other;
+    list.push({id:id, phase:"before", area:"Identity", title:"Create their own login to "+o+" with only the access their role needs", why:"You listed this system yourself on the intake screen."});
+  });
+  const devs=onbDataDevs();
+  if(devs.length || has(i,"laptop") || has(i,"phone")){
+    const one=devs.length===1, names=devs.length? " ("+devs.map(devName).join(", ")+")" : "";
+    ON_DEV_STEPS.forEach(s=>list.push(Object.assign({},s,{title:s.title.replace("{dev}", one?"the device":"their devices").replace("{is}", one?"is":"are")+names})));
+  }
+  const order={before:0, day:1, after:2};
+  return list.map((t,n)=>Object.assign(t,{ph:t.phase, n:n})).sort((a,b)=> order[a.ph]-order[b.ph] || a.n-b.n);
+}
+function onbCounts(list){
+  let done=0, na=0, open=0;
+  list.forEach(t=>{ const s=onbItemState(t.id).status; if(s==="done") done++; else if(s==="na") na++; else open++; });
+  return {done, na, open, total:list.length};
+}
+/* steps plus devices: a device not handed out yet counts as open */
+function onbTotals(){
+  const c=onbCounts(onbTasks()), devs=onbDevs(), h=devs.filter(x=>x.e.handed).length;
+  return {done:c.done+h, na:c.na, open:c.open+devs.length-h, total:c.total+devs.length};
+}
+function onbPhaseInfo(ph){
+  const sd=parseDate(state.onb.intake.startDate);
+  if(ph==="before") return {label:"Before day one", when: sd? "By "+fmt(addDays(sd,-1)) : "Set a start date"};
+  if(ph==="day") return {label:"First day", when: fmt(sd)};
+  return {label:"First 30 days", when: sd? "By "+fmt(addDays(sd,30)) : "30 days after the start date"};
+}
+function typeLabel(t){ return {staff:"Staff member", volunteer:"Volunteer", board:"Board member"}[t] || "Staff member"; }
+/* what is not ready on a device before it is handed out */
+function readyIssues(d){
+  if(!hasOS(d)) return [];
+  const out=[];
+  if(d.enc!=="on") out.push(encName(d.os)+" is not on");
+  if(d.mdm!=="yes") out.push("not enrolled in MDM");
+  if(d.av!=="yes" && (d.os==="windows"||d.os==="macos")) out.push("antivirus not confirmed");
+  if(!d.patched) out.push("no update date recorded"); else if(patchStale(d)) out.push("not updated in "+patchAge(d)+" days");
+  return out;
+}
+function readyHTML(d){
+  const p=(label,val)=>'<span><b>'+label+'</b> '+esc(val)+'</span>';
+  const yn=v=>v==="yes"? "Yes" : v==="no"? "No" : "Not set";
+  return (hasOS(d)? p("Encryption",(ENC_STATUS.find(x=>x.id===d.enc)||ENC_STATUS[2]).label)+p("MDM",yn(d.mdm))+p("Antivirus",yn(d.av))+p("Last updated",d.patched? fmtShort(d.patched) : "—") : p("Type",devTypeLabel(d.type)));
+}
+function refreshOnbReady(d){
+  view.querySelectorAll('[data-onbready="'+d.id+'"]').forEach(x=>{ x.innerHTML=readyHTML(d); });
+  view.querySelectorAll('[data-onbissue="'+d.id+'"]').forEach(x=>{ const r=readyIssues(d); x.textContent = r.length? "Before you hand it out: "+r.join(", ")+"." : ""; });
+}
+/* hand out: the inventory shows it In use and assigned to this person; undo puts back what was there */
+function onbHand(invId){
+  const e=state.onb.devices.find(x=>x.invId===invId), d=state.inventory.find(x=>x.id===invId); if(!e||!d) return "";
+  if(!e.handed){
+    const who=state.onb.intake.role.trim(); if(!who) return "Enter their role or name on the intake first, so the inventory shows who has it.";
+    e.prev={invStatus:d.invStatus, assignedTo:d.assignedTo, assignedBy:d.assignedBy, dateAssigned:d.dateAssigned};
+    d.invStatus="inuse"; d.assignedTo=who; d.assignedBy=e.assignedBy || state.onb.intake.doneBy || ""; d.dateAssigned=e.dateAssigned || todayISO();
+    e.handed=true; e.at=Date.now();
+  } else {
+    if(e.prev) Object.assign(d, e.prev);
+    e.handed=false; e.at=null; e.prev=null;
+  }
+  return "";
+}
+function onbPick(invId){
+  if(!state.inventory.some(d=>d.id===invId) || state.onb.devices.some(e=>e.invId===invId)) return;
+  state.onb.devices.push({invId:invId, assignedBy:state.onb.intake.doneBy.trim(), dateAssigned:todayISO(), handed:false, at:null, prev:null});
+}
+/* checking a device step records it on their devices in the inventory */
+function onbApplySets(t){
+  if(!t.sets) return;
+  onbDataDevs().forEach(d=>{ if(t.sets==="enc") d.enc="on"; else if(t.sets==="patched") d.patched=todayISO(); else d[t.sets]="yes"; });
+}
+
+/* ---------- onboarding views ---------- */
+function onbBanner(){
+  return state.onb.example ? '<div class="banner"><span><b>Example loaded.</b> This is a sample person so you can see how it works.</span><button class="btn" type="button" data-act="onbNew">Start your own</button></div>' : "";
+}
+function viewOnbIntake(){
+  const i=state.onb.intake, n=onbTasks().length;
+  const sys=SYSTEMS.map(s=>'<label for="onbsys_'+s.id+'"><input type="checkbox" id="onbsys_'+s.id+'" data-onbsys="'+s.id+'"'+(has(i,s.id)?" checked":"")+'><span>'+esc(s.label)+(s.hint?'<small>'+esc(s.hint)+'</small>':"")+'</span></label>').join("");
+  return '<section class="panel">'+onbBanner()+
+  '<div><h2>Who is starting?</h2><p class="muted">Answer a few questions and the checklist builds itself with only the steps that apply.</p></div>'+
+  '<div class="grid2">'+
+    '<div class="field"><label for="onb_role">Role or name</label><input type="text" id="onb_role" placeholder="Example: Program assistant" value="'+esc(i.role)+'"><small>Devices you hand out are assigned to this name in the inventory.</small></div>'+
+    '<div class="field"><label for="onb_doneBy">Completed by</label><input type="text" id="onb_doneBy" placeholder="Who is doing the onboarding" value="'+esc(i.doneBy)+'"></div>'+
+  '</div>'+
+  '<div class="grid2">'+
+    '<div class="field"><span class="legend">They are a</span><div class="seg">'+
+      ['staff','volunteer','board'].map(v=>'<label><input type="radio" name="onb_type" value="'+v+'"'+(i.type===v?" checked":"")+'>'+typeLabel(v)+'</label>').join("")+
+    '</div></div>'+
+    '<div class="field"><label for="onb_startDate">Start date</label><input type="date" id="onb_startDate" value="'+esc(i.startDate)+'"></div>'+
+  '</div>'+
+  '<div class="field"><span class="legend">Do they need admin access to anything?</span><div class="seg">'+
+    '<label><input type="radio" name="onb_admin" value="yes"'+(i.admin?" checked":"")+'>Yes</label>'+
+    '<label><input type="radio" name="onb_admin" value="no"'+(!i.admin?" checked":"")+'>No</label>'+
+  '</div><small>Most people do not. Admin access can change settings and see everyone\'s data, so give it only when the job needs it.</small></div>'+
+  (i.admin? '<div class="field"><label for="onb_adminWhy">Why do they need admin access?</label><input type="text" id="onb_adminWhy" placeholder="Example: they manage the website and add new staff accounts" value="'+esc(i.adminWhy)+'"><small>A short reason goes on the record.</small></div>' : '')+
+  '<div class="field"><span class="legend">What will they need access to?</span><div class="systems">'+sys+'</div></div>'+
+  '<div class="field"><label for="onb_other">Any other systems?</label><input type="text" id="onb_other" placeholder="Separate with commas. Example: Zoom, Canva, scheduling app" value="'+esc(i.other)+'"></div>'+
+  viewOnbDevices()+
+  '<div class="formfoot"><span class="muted" id="onbBuildCount">This builds a checklist of <b>'+n+'</b> steps.</span><button class="btn primary" type="button" data-onbgo="list">Build checklist</button></div>'+
+  '</section>';
+}
+function viewOnbDevices(){
+  const picked=onbDevs();
+  const avail=state.inventory.filter(d=>(d.invStatus==="storage"||d.invStatus==="ready") && !state.onb.devices.some(e=>e.invId===d.id));
+  const opt=(list,sel)=>list.map(o=>'<option value="'+o[0]+'"'+(o[0]===sel?" selected":"")+'>'+esc(o[1])+'</option>').join("");
+  const rows=picked.map(({e,d})=>'<div class="dev'+(e.handed?' s-returned':'')+'">'+
+    '<div><div class="t">'+esc(devName(d))+'</div><div class="serial">'+(d.serial? "Serial or asset tag: "+esc(d.serial) : "No serial or asset tag entered")+' · In the inventory as '+esc(invStatusLabel(d.invStatus))+'</div></div>'+
+    (e.handed? '<div class="ddates"><span><b>Handed out</b> '+esc(fmtStamp(e.at))+'</span><span><b>Assigned by</b> '+esc(d.assignedBy||"—")+'</span><span><b>Date assigned</b> '+esc(fmtShort(d.dateAssigned)||"—")+'</span></div><small class="muted">To change these, undo the hand out on the checklist.</small>'
+     : '<div class="grid2"><div class="field"><label for="onbab_'+d.id+'">Assigned by</label><input type="text" id="onbab_'+d.id+'" data-onbdev="'+d.id+'" data-onbfield="assignedBy" value="'+esc(e.assignedBy)+'"></div>'+
+       '<div class="field"><label for="onbda_'+d.id+'">Date assigned</label><input type="date" id="onbda_'+d.id+'" data-onbdev="'+d.id+'" data-onbfield="dateAssigned" value="'+esc(e.dateAssigned)+'"></div></div>')+
+    '<div class="rowbtns"><button class="linkbtn" type="button" data-act="onbRemove" data-inv="'+d.id+'">Remove from this list</button></div></div>').join("");
+  return '<div class="field"><span class="legend">Devices</span>'+
+    '<small>Pick devices from the inventory that are in storage or ready to reuse, or add a new one. You hand them out on the checklist.</small>'+
+    '<div class="devlist">'+(rows || '<div class="devempty">No devices picked yet.</div>')+'</div>'+
+    (avail.length? '<div class="pickrow"><select id="onb_pick" aria-label="Pick a device from the inventory"><option value="">Pick a device in storage or ready to reuse</option>'+
+        avail.map(d=>'<option value="'+d.id+'">'+esc(devName(d)+(d.serial? " · "+d.serial : "")+" · "+invStatusLabel(d.invStatus))+'</option>').join("")+'</select>'+
+        '<button class="btn" type="button" data-act="onbPick">Add this device</button></div>'
+      : '<small class="muted">No devices in the inventory are in storage or ready to reuse.</small>')+
+    '<details class="devmore" id="onbNewBox"'+(onbMsg?" open":"")+'><summary>Add a new device</summary><div class="invmain">'+
+      '<div class="field"><label for="onbn_type">Type</label><select id="onbn_type">'+opt(DEVICE_TYPES.map(t=>[t.id,t.label]),"laptop")+'</select></div>'+
+      '<div class="field"><label for="onbn_os">Operating system</label><select id="onbn_os">'+opt([["","Guess from the model"]].concat(DEVICE_OS.map(o=>[o.id,o.label])),"")+'</select></div>'+
+      '<div class="field"><label for="onbn_model">Make and model</label><input type="text" id="onbn_model" placeholder="Example: Dell Latitude 5440"></div>'+
+      '<div class="field"><label for="onbn_serial">Serial or asset tag</label><input type="text" id="onbn_serial"></div>'+
+    '</div><div class="rowbtns"><button class="btn" type="button" data-act="onbNewDev">Add to the inventory and this list</button></div></details>'+
+    (onbMsg? '<small id="onbMsg" role="status" style="color:var(--done)">'+esc(onbMsg)+'</small>' : '')+'</div>';
+}
+function onbItemHTML(t){
+  const s=onbItemState(t.id);
+  return '<div class="item s-'+s.status+'" data-id="'+t.id+'" data-onb="1">'+
+    '<button class="check" type="button" data-act="toggle" aria-pressed="'+(s.status==="done")+'" aria-label="Mark done: '+esc(t.title)+'">'+CHECK+'</button>'+
+    '<div class="body"><div class="t">'+esc(t.title)+'</div><div class="why">'+esc(t.why)+'</div>'+
+    '<div class="meta"><span class="tag">'+esc(t.area)+'</span>'+
+    (s.status==="done"&&s.at?'<span class="stamp">Done '+esc(fmtStamp(s.at))+'</span>':"")+
+    '<button class="linkbtn" type="button" data-act="skip">'+(s.status==="na"?"Undo not needed":"Not needed")+'</button>'+
+    '<button class="linkbtn" type="button" data-act="note">'+(s.note?"Edit note":"Add note")+'</button></div>'+
+    learnHTML(t)+
+    '<textarea id="onbnote_'+t.id+'" data-onbnote="'+t.id+'" placeholder="Example: Badge 112 and front door key"'+(s.note?"":" hidden")+'>'+esc(s.note)+'</textarea>'+
+    '</div></div>';
+}
+function viewOnbHandout(){
+  const i=state.onb.intake, devs=onbDevs();
+  if(!devs.length) return (has(i,"laptop")||has(i,"phone")) ? '<div class="banner"><span>No devices picked. Pick them on the intake screen so you can hand each one out.</span><button class="btn" type="button" data-onbgo="intake">Pick devices</button></div>' : "";
+  const h=devs.filter(x=>x.e.handed).length;
+  let html='<div class="phase"><div class="phase-head"><h3>Device hand out</h3><span class="when">'+esc(fmt(parseDate(i.startDate)))+' · '+h+'/'+devs.length+'</span></div>';
+  if(onbMsg) html+='<div class="banner warn" role="status"><span>'+esc(onbMsg)+'</span></div>';
+  devs.forEach(({e,d})=>{
+    const issues=readyIssues(d);
+    html+='<div class="dev'+(e.handed?' s-returned':'')+'" data-onbcard="'+d.id+'">'+
+      '<div><div class="t">'+esc(devName(d))+'</div><div class="serial">'+(hasOS(d)? esc(osLabel(d.os))+' · ' : '')+(d.serial? "Serial or asset tag: "+esc(d.serial) : "No serial or asset tag entered")+'</div></div>'+
+      '<div class="ddates" data-onbready="'+d.id+'">'+readyHTML(d)+'</div>'+
+      (e.handed? '' : '<small class="warntext" data-onbissue="'+d.id+'">'+(issues.length? esc("Before you hand it out: "+issues.join(", ")+".") : "")+'</small>')+
+      '<div class="rowbtns"><button class="btn'+(e.handed?'':' primary')+'" type="button" data-act="onbHand" data-inv="'+d.id+'" aria-pressed="'+e.handed+'">'+(e.handed?"Undo hand out":"Mark as handed out")+'</button></div>'+
+      (e.handed? '<span class="stamp">Handed out '+esc(fmtStamp(e.at))+'. In the inventory as In use, assigned to '+esc(d.assignedTo)+'.</span>' : '')+
+      devMore(d)+
+    '</div>';
+  });
+  return html+'</div>';
+}
+function viewOnbList(){
+  const list=onbTasks();
+  let html='<section class="panel">'+onbBanner()+
+    '<div><h2>Checklist for '+esc(onbPerson())+'</h2><p class="muted">Check each step when it is done. Mark a step as not needed if it does not apply.</p></div>';
+  ["before","day","after"].forEach(ph=>{
+    const items=list.filter(t=>t.ph===ph); if(!items.length) return;
+    const info=onbPhaseInfo(ph), c=onbCounts(items);
+    html+='<div class="phase"><div class="phase-head"><h3>'+info.label+'</h3><span class="when">'+esc(info.when)+' · '+(c.done+c.na)+'/'+c.total+'</span></div>'+items.map(onbItemHTML).join("")+'</div>';
+    if(ph==="day") html+=viewOnbHandout();
+  });
+  return html+'<div class="formfoot"><button class="btn" type="button" data-onbgo="intake">Back to intake</button><button class="btn primary" type="button" data-onbgo="record">View record</button></div></section>';
+}
+function onbSystemsText(){
+  const i=state.onb.intake;
+  return SYSTEMS.filter(s=>has(i,s.id)).map(s=>s.label).concat((i.other||"").split(/[,\n;]/).map(x=>x.trim()).filter(Boolean));
+}
+function onbAdminText(){ const i=state.onb.intake; return i.admin? "Yes, with a separate admin account. Why: "+(i.adminWhy.trim()||"not entered") : "No"; }
+function onbStatusText(s){ return s.status==="done"? "Done"+(s.at?" "+fmtStamp(s.at):"") : s.status==="na"? "Not needed" : "Open"; }
+function viewOnbRecord(){
+  const i=state.onb.intake, list=onbTasks(), c=onbCounts(list), devs=onbDevs(), notHanded=devs.filter(x=>!x.e.handed).length;
+  const dash='<span class="muted">—</span>', na='<span class="muted">n/a</span>', dcell=iso=> iso? esc(fmtShort(iso)) : dash;
+  const rows=list.map(t=>{ const s=onbItemState(t.id), tags=learnFor(t).tags;
+    const st= s.status==="done"? '<span class="st done">'+esc(onbStatusText(s))+'</span>' : s.status==="na"? '<span class="st na">Not needed</span>' : '<span class="st open">Open</span>';
+    return '<tr><td>'+esc(onbPhaseInfo(t.ph).label)+'</td><td>'+esc(t.title)+(tags.length? '<br><span class="aligned">Aligned with '+esc(tags.map(k=>TAGS[k].label).join(", "))+'</span>' : '')+'</td><td>'+st+'</td><td>'+esc(s.note)+'</td></tr>'; }).join("");
+  const yn=v=>v==="yes"? "Yes" : v==="no"? "No" : "Not set";
+  const devRows=devs.map(({e,d})=>'<tr'+(patchStale(d)?' class="stale"':'')+'><td><b>'+esc(devName(d))+'</b><br><span class="muted mono">'+esc(d.serial||"No serial")+'</span></td>'+
+    '<td>'+(hasOS(d)? esc(osLabel(d.os)) : na)+'</td><td>'+(hasOS(d)? esc(encText(d)) : na)+'</td><td>'+(hasOS(d)? yn(d.mdm) : na)+'</td><td>'+(hasOS(d)? yn(d.av) : na)+'</td>'+
+    '<td>'+(!hasOS(d)? na : patchStale(d)? '<span class="st missing">⚠ '+esc(fmtShort(d.patched))+'</span>' : dcell(d.patched))+'</td>'+
+    '<td>'+esc((e.handed? d.assignedBy : e.assignedBy)||"—")+'</td><td>'+dcell(e.handed? d.dateAssigned : e.dateAssigned)+'</td>'+
+    '<td>'+(e.handed? '<span class="st done">Handed out '+esc(fmtStamp(e.at))+'</span>' : '<span class="st open">Not handed out</span>')+'</td></tr>').join("");
+  const openMsg=[]; if(c.open) openMsg.push(c.open+" step"+(c.open===1?"":"s")); if(notHanded) openMsg.push(notHanded+" device"+(notHanded===1?"":"s"));
+  const sys=onbSystemsText();
+  return '<section class="panel">'+onbBanner()+
+  '<div><h2>Access granted</h2><p class="muted">A dated record of the access and devices you gave. Keep a copy with your HR or IT files.</p></div>'+
+  (openMsg.length? '<div class="banner warn"><span><b>'+openMsg.join(" and ")+' still open.</b> Finish them or mark them as not needed before you save this record.</span><button class="btn" type="button" data-onbgo="list">Go to checklist</button></div>'
+    : '<div class="banner"><span><b>All steps are closed.</b> Access for this person is set up.</span></div>')+
+  '<div class="recordhead">'+
+    '<div class="kv"><span>Person or role</span><b>'+esc(onbPerson())+'</b></div>'+
+    '<div class="kv"><span>Start date</span><b>'+esc(fmt(parseDate(i.startDate)))+'</b></div>'+
+    '<div class="kv"><span>Completed by</span><b>'+esc(i.doneBy||"Not entered")+'</b></div>'+
+    '<div class="kv"><span>Done</span><b>'+c.done+' of '+c.total+'</b></div>'+
+    '<div class="kv"><span>Not needed</span><b>'+c.na+'</b></div>'+
+    '<div class="kv"><span>Open</span><b>'+c.open+'</b></div>'+
+  '</div>'+
+  '<div class="devdetails"><div class="ddcard"><b>Systems</b><p>'+(sys.length? esc(sys.join(", ")) : '<span class="muted">None picked</span>')+'</p></div>'+
+    '<div class="ddcard"><b>Admin access</b><p>'+esc(onbAdminText())+'</p></div></div>'+
+  '<div class="tablewrap"><table><thead><tr><th>When</th><th>Step</th><th>Status</th><th>Note</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+  (devs.length? '<h3>Devices</h3><div class="tablewrap"><table class="wide"><thead><tr><th>Device</th><th>OS</th><th>Encryption</th><th>MDM</th><th>Antivirus</th><th>Last updated</th><th>Assigned by</th><th>Date assigned</th><th>Hand out</th></tr></thead><tbody>'+devRows+'</tbody></table></div>' : '')+
+  '<p class="muted aligned-note">Steps are aligned with the frameworks shown, not a certification of compliance.</p>'+
+  '<div class="rowbtns"><button class="btn primary" type="button" data-act="onbCopy">Copy record</button>'+
+  (TOP? '<button class="btn" type="button" data-act="onbDownload">Download as text file</button><button class="btn" type="button" data-act="onbCSV">Download for Excel (.csv)</button><button class="btn" type="button" data-act="print">Print</button>' : '')+
+  '</div></section>';
+}
+function onbRecordText(){
+  const i=state.onb.intake, list=onbTasks(), c=onbCounts(list), devs=onbDevs(), lines=[];
+  lines.push("ACCESS GRANTED RECORD");
+  lines.push("Person or role: "+onbPerson());
+  lines.push("Type: "+typeLabel(i.type));
+  lines.push("Start date: "+fmt(parseDate(i.startDate)));
+  lines.push("Completed by: "+(i.doneBy||"Not entered"));
+  lines.push("Record created: "+new Date().toLocaleString("en-US"));
+  lines.push("Systems: "+(onbSystemsText().join(", ")||"None picked"));
+  lines.push("Admin access: "+onbAdminText());
+  lines.push("Summary: "+c.done+" done, "+c.na+" not needed, "+c.open+" open, "+c.total+" total");
+  if(devs.length) lines.push("Devices: "+devs.filter(x=>x.e.handed).length+" handed out of "+devs.length);
+  lines.push("Guidance: steps are aligned with NIST CSF 2.0 and CIS Controls v8.1. This record is not a certification of compliance.");
+  ["before","day","after"].forEach(ph=>{
+    const items=list.filter(t=>t.ph===ph); if(!items.length) return;
+    const info=onbPhaseInfo(ph); lines.push(""); lines.push(info.label.toUpperCase()+" ("+info.when+")");
+    items.forEach(t=>{ const s=onbItemState(t.id), tags=learnFor(t).tags;
+      lines.push("["+onbStatusText(s).toUpperCase()+"] "+t.title+(s.note?"\n    Note: "+s.note:"")+(tags.length? "\n    Aligned with: "+tags.map(k=>TAGS[k].label).join(", ") : "")); });
+  });
+  if(devs.length){
+    lines.push(""); lines.push("DEVICES");
+    devs.forEach(({e,d})=>{
+      lines.push("["+(e.handed? "HANDED OUT "+fmtStamp(e.at) : "NOT HANDED OUT")+"] "+devName(d)+(hasOS(d)? " | OS: "+osLabel(d.os)+" | "+encText(d) : "")+" | Serial or asset tag: "+(d.serial||"Not entered"));
+      lines.push("    Assigned by: "+((e.handed? d.assignedBy : e.assignedBy)||"Not entered")+"; Date assigned: "+(fmtShort(e.handed? d.dateAssigned : e.dateAssigned)||"Not entered")+
+        (hasOS(d)? "; MDM: "+(fieldText(d,fieldDef("mdm"))||"Not set")+"; Antivirus: "+(fieldText(d,fieldDef("av"))||"Not set")+"; Last updated: "+(fmtShort(d.patched)||"Not entered") : ""));
+      if(patchStale(d)) lines.push("    WARNING: not updated in "+patchAge(d)+" days");
+    });
+  }
+  return lines.join("\n");
+}
+/* one row per item so the record can be sorted and filtered in Excel */
+function onbCSV(){
+  const i=state.onb.intake, rows=[["Section","Item","Status","Date","Details"]];
+  rows.push(["Person", onbPerson(), typeLabel(i.type), i.startDate, "Completed by: "+(i.doneBy||"Not entered")]);
+  rows.push(["Admin access", i.admin? "Yes" : "No", i.admin? "Separate admin account" : "", "", i.admin? i.adminWhy : ""]);
+  onbSystemsText().forEach(s=>rows.push(["System", s, "Needed", "", ""]));
+  onbTasks().forEach(t=>{ const s=onbItemState(t.id); rows.push([onbPhaseInfo(t.ph).label, t.title, s.status==="done"? "Done" : s.status==="na"? "Not needed" : "Open", s.at? isoDate(new Date(s.at)) : "", s.note]); });
+  onbDevs().forEach(({e,d})=>rows.push(["Device", devName(d), e.handed? "Handed out" : "Not handed out", e.handed? d.dateAssigned : e.dateAssigned,
+    "Serial or asset tag: "+(d.serial||"Not entered")+"; Assigned by: "+((e.handed? d.assignedBy : e.assignedBy)||"Not entered")]));
+  return "﻿"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n");
+}
+function goOnb(step){ onbMsg=""; state.onb.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
+function updateOnbCount(){ const el=document.getElementById("onbBuildCount"); if(el) el.innerHTML='This builds a checklist of <b>'+onbTasks().length+'</b> steps.'; }
+/* clicks on the Onboarding tab; returns true when handled */
+function onbClick(e){
+  const g=e.target.closest("[data-onbgo]"); if(g){ goOnb(g.dataset.onbgo); return true; }
+  const a=e.target.closest("[data-act]"); if(!a) return false;
+  const act=a.dataset.act, o=state.onb;
+  if(act==="onbNew"){ startNew(); return true; }
+  if(act==="onbPick"){ const s=document.getElementById("onb_pick"); if(s && s.value){ onbPick(s.value); onbMsg=""; save(); } redrawKeep("#onb_pick"); return true; }
+  if(act==="onbNewDev"){
+    const val=id=>{ const el=document.getElementById(id); return el? el.value.trim() : ""; };
+    const model=val("onbn_model").slice(0,120), serial=val("onbn_serial").slice(0,80);
+    if(!model && !serial){ onbMsg="Enter a make and model or a serial or asset tag first."; redrawKeep("#onbn_model"); return true; }
+    if(serial && state.inventory.some(d=>normName(d.serial)===normName(serial))){ onbMsg="A device with that serial or asset tag is already in the inventory. Pick it from the list instead."; redrawKeep("#onbn_serial"); return true; }
+    const type=DEVICE_TYPES.some(x=>x.id===val("onbn_type"))? val("onbn_type") : "other";
+    const d=newDevice(type); d.id=uid("i"); d.model=model; d.serial=serial; const os=val("onbn_os"); d.os = DEVICE_OS.some(x=>x.id===os)? os : guessOS(model); d.invStatus="storage";
+    state.inventory.push(d); onbPick(d.id); o.example=false; onbMsg=""; save(); redrawKeep("#onb_pick"); return true;
+  }
+  if(act==="onbRemove"){
+    const e2=o.devices.find(x=>x.invId===a.dataset.inv); if(!e2) return true;
+    if(e2.handed) onbHand(e2.invId); /* put the inventory back the way it was */
+    o.devices=o.devices.filter(x=>x!==e2); save(); redrawKeep("#onb_pick"); return true;
+  }
+  if(act==="onbHand"){ onbMsg=onbHand(a.dataset.inv); save(); redrawKeep('[data-act="onbHand"][data-inv="'+a.dataset.inv+'"]'); return true; }
+  if(act==="onbCopy"){ copyRecord(a, onbRecordText()); return true; }
+  if(act==="onbDownload"){ saveFile(onbRecordText(), "access-granted-"+(o.intake.startDate||todayISO())+".txt", "text/plain"); return true; }
+  if(act==="onbCSV"){ saveFile(onbCSV(), "access-granted-"+(o.intake.startDate||todayISO())+".csv", "text/csv;charset=utf-8"); return true; }
+  const row=a.closest('.item[data-onb]'); if(!row) return false;
+  const id=row.dataset.id, s=Object.assign({},onbItemState(id));
+  if(act==="toggle"){ if(s.status==="done"){ s.status="open"; s.at=null; } else { s.status="done"; s.at=Date.now(); const t=onbTasks().find(x=>x.id===id); if(t) onbApplySets(t); } }
+  else if(act==="skip"){ s.status = s.status==="na" ? "open" : "na"; s.at=null; }
+  else if(act==="note"){ const ta=row.querySelector("textarea"); ta.hidden=false; ta.focus(); return true; }
+  else return false;
+  o.items[id]=s; save(); redrawKeep('.item[data-id="'+id+'"] [data-act="'+act+'"]');
+  return true;
+}
+/* Offboarding intake: names that have devices in the inventory */
+function invPeople(){
+  const m=new Map();
+  state.inventory.forEach(d=>{ const k=normName(d.assignedTo); if(!k || d.invStatus==="retired") return; if(!m.has(k)) m.set(k,{name:d.assignedTo.trim().replace(/\s+/g," "), n:0}); m.get(k).n++; });
+  return Array.from(m.values()).sort((a,b)=>a.name.localeCompare(b.name));
+}
+function invPersonSelect(){
+  const p=invPeople(); if(!p.length) return "";
+  const cur=normName(state.intake.role);
+  return '<select id="invPerson" class="pickperson" aria-label="Pick a name from the inventory"><option value="">Pick a name from the inventory</option>'+
+    p.map(x=>'<option value="'+esc(x.name)+'"'+(normName(x.name)===cur?" selected":"")+'>'+esc(x.name)+' ('+x.n+' device'+(x.n===1?"":"s")+')</option>').join("")+'</select>';
+}
+
+/* each main tab has its own step bar */
 const OFF_STEPS = [["intake",'Intake<span class="lbl-long"> questions</span>'],["list","Checklist"],["record","Record"]];
 const INV_STEPS = [["all","All devices"],["add",'Add<span class="lbl-long"> or import</span>'],["reports","Reports"]];
 function render(){
   const tab = state.tab, v = document.getElementById("view");
   document.querySelectorAll("nav.tabs button").forEach(b=>{ if(b.dataset.tab===tab) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
-  const bar = tab==="off"? OFF_STEPS : tab==="inv"? INV_STEPS : null, cur = tab==="off"? state.step : state.invStep, nav = document.getElementById("steps");
-  nav.hidden = !bar;
-  if(bar){ nav.setAttribute("aria-label", tab==="off"? "Offboarding steps" : "Inventory steps");
-    nav.innerHTML = bar.map((s,n)=>'<button type="button" data-step="'+s[0]+'"'+(s[0]===cur?' aria-current="step"':'')+'><span class="n">'+(n+1)+'</span><span>'+s[1]+'</span></button>').join(""); }
-  document.getElementById("card").hidden = tab!=="off";
-  document.querySelector(".top .actions").hidden = tab!=="off";
-  v.innerHTML = tab==="on" ? viewOnboarding()
+  const bar = tab==="off"? OFF_STEPS : tab==="inv"? INV_STEPS : ON_STEPS, cur = tab==="off"? state.step : tab==="inv"? state.invStep : state.onb.step, nav = document.getElementById("steps");
+  nav.setAttribute("aria-label", tab==="off"? "Offboarding steps" : tab==="inv"? "Inventory steps" : "Onboarding steps");
+  nav.innerHTML = bar.map((s,n)=>'<button type="button" data-step="'+s[0]+'"'+(s[0]===cur?' aria-current="step"':'')+'><span class="n">'+(n+1)+'</span><span>'+s[1]+'</span></button>').join("");
+  /* the progress card and the Learn mode, example and start new buttons belong to a person, so Inventory has none */
+  document.getElementById("card").hidden = tab==="inv";
+  document.querySelector(".top .actions").hidden = tab==="inv";
+  v.innerHTML = tab==="on" ? (state.onb.step==="list" ? viewOnbList() : state.onb.step==="record" ? viewOnbRecord() : viewOnbIntake())
     : tab==="inv" ? (state.invStep==="add" ? viewInvAdd() : state.invStep==="reports" ? viewInvReports() : viewInvAll())
     : state.step==="list" ? viewList() : state.step==="record" ? viewRecord() : viewIntake();
-  document.getElementById("learnMore").innerHTML = tab==="on"? "" : viewLearnMore();
+  document.getElementById("learnMore").innerHTML = viewLearnMore();
   document.getElementById("dataPanel").innerHTML = viewData();
   const lb=document.getElementById("btnLearn"); lb.setAttribute("aria-pressed", String(!!state.learn)); lb.textContent = "Learn mode: "+(state.learn?"On":"Off");
   renderCard();
 }
 function go(step){ importMsg=""; state.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
 function goInv(step){ importMsg=""; invMsg=""; state.invStep=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
-function setTab(tab){ importMsg=""; invMsg=""; state.tab=tab; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
+function setTab(tab){ importMsg=""; invMsg=""; onbMsg=""; state.tab=tab; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
 
 /* ---------- events ---------- */
 document.querySelector("nav.tabs").addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); });
-document.getElementById("steps").addEventListener("click",e=>{ const b=e.target.closest("button[data-step]"); if(!b) return; if(state.tab==="inv") goInv(b.dataset.step); else go(b.dataset.step); });
+document.getElementById("steps").addEventListener("click",e=>{ const b=e.target.closest("button[data-step]"); if(!b) return; if(state.tab==="inv") goInv(b.dataset.step); else if(state.tab==="on") goOnb(b.dataset.step); else go(b.dataset.step); });
 
 const view = document.getElementById("view");
 view.addEventListener("input",e=>{
   const el=e.target; const i=state.intake;
   if(el.id==="invSearch"){ invQuery=el.value.slice(0,100); const t=document.getElementById("invTable"); if(t) t.innerHTML=invTableHTML(); return; }
+  /* onboarding fields */
+  if(["onb_role","onb_doneBy","onb_startDate","onb_other","onb_adminWhy"].indexOf(el.id)!==-1){
+    state.onb.intake[el.id.slice(4)] = el.value.slice(0, el.id==="onb_other"? 1000 : el.id==="onb_adminWhy"? 300 : 200);
+    save(); renderCard(); updateOnbCount(); return;
+  }
+  if(el.dataset.onbnote){ const s=Object.assign({},onbItemState(el.dataset.onbnote)); s.note=el.value.slice(0,2000); state.onb.items[el.dataset.onbnote]=s; save(); return; }
+  if(el.dataset.onbdev){ const en=state.onb.devices.find(x=>x.invId===el.dataset.onbdev); if(en && !en.handed){ en[el.dataset.onbfield] = el.dataset.onbfield==="dateAssigned"? (/^\d{4}-\d{2}-\d{2}$/.test(el.value)? el.value : "") : el.value.slice(0,200); save(); } return; }
   if(el.id==="role"||el.id==="doneBy"||el.id==="lastDay"||el.id==="other"){ i[el.id]=el.value; }
   else if(el.dataset.note){ const s=Object.assign({},itemState(el.dataset.note)); s.note=el.value; state.items[el.dataset.note]=s; save(); return; }
   else if(el.dataset.dev && el.dataset.field && (el.tagName==="INPUT"||el.tagName==="TEXTAREA")){
@@ -1694,6 +2176,7 @@ view.addEventListener("input",e=>{
     dv[el.dataset.field]=v; save();
     /* dates change the warning and the dates line, so refresh those in place (redrawing would interrupt typing) */
     if(el.type==="date") refreshDevInfo(dv);
+    if(state.tab==="on") refreshOnbReady(dv);
     if(isInv(dv)){ const r=view.querySelector('tr[data-invrow="'+dv.id+'"]'); if(r) r.innerHTML=invRowCells(dv); }
     return;
   }
@@ -1702,6 +2185,13 @@ view.addEventListener("input",e=>{
 });
 view.addEventListener("change",e=>{
   const el=e.target; const i=state.intake;
+  /* onboarding answers */
+  const oi=state.onb.intake;
+  if(el.dataset.onbsys){ const set=new Set(oi.systems); el.checked?set.add(el.dataset.onbsys):set.delete(el.dataset.onbsys); oi.systems=SYSTEMS.map(s=>s.id).filter(id=>set.has(id)); save(); renderCard(); updateOnbCount(); return; }
+  if(el.name==="onb_type"){ oi.type=el.value; save(); renderCard(); return; }
+  if(el.name==="onb_admin"){ oi.admin = el.value==="yes"; save(); redrawKeep('input[name="onb_admin"][value="'+el.value+'"]'); return; }
+  /* offboarding: pick a name that has devices in the inventory */
+  if(el.id==="invPerson"){ if(el.value){ i.role=el.value; importMsg=""; save(); redrawKeep('[data-act="loadInv"]'); } return; }
   if(el.dataset.sys){ const set=new Set(i.systems); el.checked?set.add(el.dataset.sys):set.delete(el.dataset.sys); i.systems=SYSTEMS.map(s=>s.id).filter(id=>set.has(id)); }
   else if(el.name==="type") i.type=el.value;
   else if(el.name==="departure") i.departure=el.value;
@@ -1715,7 +2205,7 @@ view.addEventListener("change",e=>{
     if(f==="updReq" && el.value==="yes" && !dv.updReqDate) dv.updReqDate=todayISO();
     save();
     /* these change which fields show, the encryption name or a filled-in date, so redraw and keep focus */
-    if(["type","os","next","updReq","invStatus"].indexOf(f)!==-1){
+    if(["type","os","next","updReq","invStatus"].indexOf(f)!==-1 || state.tab==="on"){
       const y=window.scrollY; render(); window.scrollTo(0,y);
       const again=view.querySelector('select[data-dev="'+dv.id+'"][data-field="'+f+'"]'); if(again) again.focus({preventScroll:true});
     } else { renderCard(); updateCount(); }
@@ -1747,6 +2237,7 @@ function updateCount(){ const el=document.getElementById("buildCount"); if(el) e
 view.addEventListener("click",e=>{
   const g=e.target.closest("[data-go]"); if(g){ go(g.dataset.go); return; }
   if(invClick(e)) return;
+  if(onbClick(e)) return;
   const a=e.target.closest("[data-act]"); if(!a) return;
   const act=a.dataset.act;
   if(act==="new"){ startNew(); return; }
@@ -1801,8 +2292,8 @@ view.addEventListener("click",e=>{
   const again=view.querySelector('.item[data-id="'+id+'"] [data-act="'+act+'"]'); if(again) again.focus({preventScroll:true});
 });
 
-function copyRecord(btn){
-  const text=recordText();
+function copyRecord(btn, txt){
+  const text=txt||recordText();
   const done=()=>{ btn.textContent="Copied"; setTimeout(()=>{btn.textContent="Copy record"},1800); };
   const fallback=()=>{ const ta=document.getElementById("copyText"); ta.value=text; ta.select(); let ok=false; try{ ok=document.execCommand("copy") }catch(err){} if(ok) done(); else { btn.textContent="Select and copy the text below"; showPlain(text); } };
   try{ navigator.clipboard.writeText(text).then(done, fallback); }catch(err){ fallback(); }
@@ -1820,15 +2311,20 @@ function download(){
 }
 
 const btnNew=document.getElementById("btnNew");
+/* Start new and Load example work on the person in the open tab, and never touch the inventory */
 function startNew(){
-  if(!state.example && !confirmNew){ confirmNew=true; btnNew.textContent="Tap again to clear"; setTimeout(()=>{confirmNew=false; btnNew.textContent="Start new";},3000); return; }
+  const onTab = state.tab==="on", ex = onTab? state.onb.example : state.example;
+  if(!ex && !confirmNew){ confirmNew=true; btnNew.textContent="Tap again to clear"; setTimeout(()=>{confirmNew=false; btnNew.textContent="Start new";},3000); return; }
   confirmNew=false; btnNew.textContent="Start new";
+  if(onTab){ state.onb=blankOnb(); onbMsg=""; save(); render(); return; }
   state=Object.assign(blank(), keepApp()); state.intake.lastDay=isoDate(new Date()); save(); render();
 }
-/* Start new and Load example replace only the offboarding person, never the inventory */
-function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory}; }
+function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb}; }
 btnNew.addEventListener("click",startNew);
-document.getElementById("btnExample").addEventListener("click",()=>{ state=Object.assign(example(), keepApp()); save(); render(); });
+document.getElementById("btnExample").addEventListener("click",()=>{
+  if(state.tab==="on"){ state.onb=exampleOnb(); onbMsg=""; } else state=Object.assign(example(), keepApp());
+  save(); render();
+});
 /* Learn mode opens or closes every explanation, the glossary and the sources at once */
 document.getElementById("btnLearn").addEventListener("click",()=>{
   state.learn=!state.learn; learnOpen.clear(); learnClosed.clear(); save();

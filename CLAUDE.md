@@ -20,7 +20,8 @@ Expected differences, which do not need mirroring:
 - Titles, taglines, footers and version numbers
 - localStorage keys: Access uses `cbc-access-v1`, Offboarding uses `cbc-offboarding-v1`. Both apps are on catherine-jason.github.io and share browser storage, so these must never match.
 - Access says "your organization" where Offboarding says "nonprofit"
-- Features only in Access: the Onboarding tab, the Inventory tab, backup and restore, and the links between them (for example "Load their devices from inventory" and check in updating the inventory). Access may add hooks around shared code for these, as long as the shared behavior stays the same.
+- Features only in Access: the Onboarding tab, the Inventory tab, backup and restore, and the links between them (for example "Load their devices from inventory", the name picker, check in and hand out updating the inventory). Access may add hooks around shared code for these, as long as the shared behavior stays the same.
+- Onboarding adds its own steps, "Why this matters" text, the PR.AT-01 and CIS Control 14 tags, glossary terms and sources in the "v2.2 (Access only): Onboarding" block. Those are not mirrored. Edit them there, not in the shared lists.
 
 ## Working rules
 
