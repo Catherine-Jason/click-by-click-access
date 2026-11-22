@@ -16,6 +16,8 @@ It is free and open source under the MIT License. Everything runs in the browser
 
 **Try it:** https://access.catherinejason.com/
 
+**Try a demo:** https://access.catherinejason.com/demo.html shows the app filled in with sample data. Nothing in the demo is saved.
+
 The official address is access.catherinejason.com.
 
 Found a security problem? Please report it privately, as [SECURITY.md](SECURITY.md) explains, not in a public issue.

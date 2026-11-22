@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nMte6AhWrGHPyzxVYA6vZ8vSKlTQSwH61ZBotDqVsJk='; style-src 'sha256-cTUIz9M2mGLtCBN3WbelutCNrsA0shnAOmuNBnhojvc='; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-UEM5P2F8m2u4SyIZovuSSAVQlzQ4GdYj+FW8iQgWF2w='; style-src 'sha256-YtWA5WahOWFzPLsMxyoQ8W9F/e4+IeXP9FjcEg6PfWg='; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#03060b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -272,7 +272,6 @@ select.pickperson{width:auto; max-width:100%}
 .pfnote{margin-top:-10px}
 .pfsave{display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--line); padding-top:14px}
 .pfname{display:flex; gap:6px 10px; align-items:center; flex-wrap:wrap; font-size:14px} .pfname b{overflow-wrap:anywhere} .pfname input{flex:1 1 20em; min-width:0}
-.banner.exview{margin-bottom:14px; border:1px solid var(--accent)}
 dialog#modal{border:1px solid var(--line); border-radius:14px; background:var(--surface); color:var(--ink); padding:0; width:min(30em, calc(100vw - 32px)); max-width:none}
 dialog#modal::backdrop{background:rgba(0,0,0,.6)}
 .modalbox{padding:20px; display:flex; flex-direction:column; gap:12px}
@@ -320,8 +319,14 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
 .rectop{display:flex; flex-wrap:wrap; gap:2px 20px; font-size:13.5px; color:var(--muted)} .rectop p{margin:0} .rectop b{color:var(--ink)}
 @media screen{ .printonly{display:none!important} }
 @page{ margin:0.6in 0.6in 0.75in; @bottom-center{ content:"Page " counter(page) " of " counter(pages); font-family:"IBM Plex Sans", Arial, sans-serif; font-size:9pt; color:#555 } }
+/* v2.10: Try a demo, and the demo's banner and notes */
+.demolink{display:inline-block; margin-top:6px; font-size:13.5px; font-weight:600; color:var(--accent)}
+.demobanner{margin-bottom:14px; border:1px solid var(--accent)} .demobanner a{color:var(--accent); font-weight:600}
+.demonote{display:block; margin-top:4px}
+body.demo button:disabled{opacity:.45; cursor:not-allowed}
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
 @media print{
+  .demolink,.demobanner,.demonote{display:none!important}
   /* v2.7: only the record prints, in dark ink on white, with the person, dates and who completed it at the top */
   :root{--bg:#fff; --surface:#fff; --ink:#000; --muted:#444; --line:#bbb; --done:#0a5c7a; --done-soft:#fff; --warn:#8a5300; --warn-soft:#fff; --skip:#555; --accent:#0a5c7a; --accent-soft:#fff}
   body{background:#fff; background-image:none; color:#000}
@@ -346,10 +351,10 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
     <div>
       <h1>Click by Click Access</h1>
       <p class="sub">Free onboarding, offboarding and device inventory, one step at a time.</p>
+      <a class="demolink" id="lnkDemo" href="demo.html" target="_blank" rel="noopener">Try a demo</a>
     </div>
     <div class="actions">
       <button class="btn" id="btnLearn" type="button" aria-pressed="false">Learn mode: Off</button>
-      <button class="btn" id="btnExample" type="button">Load example</button>
       <button class="btn warn" id="btnNew" type="button">Start new</button>
     </div>
   </header>
@@ -377,7 +382,7 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.9 &middot; <a class="footlink" href="https://www.catherinejason.com" target="_blank" rel="noopener">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.10 &middot; <a class="footlink" href="https://www.catherinejason.com" target="_blank" rel="noopener">catherinejason.com</a></p>
     <p>The official address is <a class="footlink" href="https://access.catherinejason.com/">access.catherinejason.com</a>.</p>
   </footer>
 </div>
@@ -385,7 +390,9 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
 
 <script>
 (function(){
-const KEY = "cbc-access-v1";
+/* v2.10: demo.html shows this same app with ?demo in the address. The demo uses its own key, reads nothing and saves nothing, so it can never touch anyone's work */
+const DEMO = new URLSearchParams(location.search).has("demo");
+const KEY = DEMO? "cbc-access-demo" : "cbc-access-v1";
 const CHECK = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const SYSTEMS = [
@@ -1128,7 +1135,7 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;",
 
 function nextFriday(){const d=new Date(); const add=(5-d.getDay()+7)%7||7; return isoDate(addDays(d,add))}
 function blankRegs(){ return {hipaa:false, pci:false, ferpa:false, hold:false}; }
-function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], onb:blankOnb(), intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs(), dept:"", org:null, recNo:""}, items:{}, devices:[], fromOnb:null, fileSig:"", lastOrg:"", invOrg:null} }
+function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], onb:blankOnb(), intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs(), dept:"", org:null, recNo:""}, items:{}, devices:[], fromOnb:null, fileSig:"", lastOrg:"", invOrg:null, exAsked:false} }
 function example(){
   const s = blank(); s.example = true;
   s.intake = {role:"Volunteer events lead", type:"volunteer", departure:"planned", lastDay:nextFriday(), doneBy:"Office manager", admin:false,
@@ -1192,7 +1199,7 @@ function normalizeState(s){
     items: cleanItems(s.items), devices: cleanDevices(s.devices, false), inventory: cleanDevices(s.inventory, true),
     onb: normalizeOnb(s.onb),
     /* v2.6: what they were given at onboarding, and the fingerprint of the last saved person file */
-    fromOnb: pfCleanFromOnb(s.fromOnb), fileSig: typeof s.fileSig==="string"? s.fileSig.slice(0,16) : "",
+    fromOnb: pfCleanFromOnb(s.fromOnb), fileSig: typeof s.fileSig==="string"? s.fileSig.slice(0,16) : "", exAsked: s.exAsked===true,
     /* v2.8: the last organization name typed, and the one on the Inventory tab */
     lastOrg: str(s.lastOrg,200), invOrg: recOrgIn(s.invOrg)
   };
@@ -1204,15 +1211,13 @@ function normalizeState(s){
 /* v2.7 and older saves have no organization name (null means use the last one typed) or record number */
 function recOrgIn(v){ return typeof v==="string"? v.slice(0,200) : null; }
 function recNoIn(v){ return typeof v==="string" && /^(ON|OFF)-\d{8}-[2-9A-HJ-NP-Z]{4}$/.test(v)? v : ""; }
-function load(){ try{ const raw=localStorage.getItem(KEY); if(raw) return normalizeState(JSON.parse(raw)); }catch(e){} return null }
-let exView = null; /* v2.6: while the example is on screen, the person's own work waits here untouched and nothing is saved */
+function load(){ if(DEMO) return null; /* the demo reads nothing */ try{ const raw=localStorage.getItem(KEY); if(raw) return normalizeState(JSON.parse(raw)); }catch(e){} return null }
 let saveFailed=false;
-function save(){ if(exView || clearing) return; try{ localStorage.setItem(KEY, JSON.stringify(state)); saveFailed=false; }catch(e){ saveFailed=true; } }
+function save(){ if(DEMO || clearing) return; try{ localStorage.setItem(KEY, JSON.stringify(state)); saveFailed=false; }catch(e){ saveFailed=true; } }
 
 let state = load();
-/* first visit: their own empty work (the example is only ever a separate view, so nothing real is typed into it by mistake) */
+/* first visit: empty on every tab (the demo fills in its sample data just before the first draw) */
 if(!state) state=blank();
-if(location.hash==="#cleared"){ try{ history.replaceState(null, "", location.pathname+location.search); }catch(e){} }
 /* v2.7: the start screen shows when nothing is in progress; work in progress goes straight back to that work. The Inventory tab is remembered. */
 { const offW=offEntered(state), onW=onbEntered(state.onb), cur=state.tab; if(!((cur==="off" && offW) || (cur==="on" && onW) || (cur==="inv" && state.inventory.length))) state.tab = onW? "on" : offW? "off" : "on"; } /* OPENING TAB RULE: the last tab if it has work, else a tab with work, else Onboarding */
 let importMsg = "";
@@ -1525,15 +1530,12 @@ function renderOnbCard(){
 }
 
 /* ---------- views ---------- */
-function exampleBanner(){
-  return state.example && !exView ? '<div class="banner"><span><b>Example loaded.</b> This is a sample person so you can see how it works.</span><button class="btn" type="button" data-act="new">Start your own</button></div>' : "";
-}
 
 function viewIntake(){
   const i = state.intake;
   const sys = SYSTEMS.map(s=>'<label for="sys_'+s.id+'"><input type="checkbox" id="sys_'+s.id+'" data-sys="'+s.id+'"'+(i.systems.indexOf(s.id)!==-1?" checked":"")+'><span>'+esc(s.label)+(s.hint?'<small>'+esc(s.hint)+'</small>':"")+'</span></label>').join("");
   const n = activeTasks().length;
-  return '<section class="panel">'+exampleBanner()+pfOpenBox("off")+
+  return '<section class="panel">'+pfOpenBox("off")+
   '<div><h2>Who is leaving?</h2><p class="muted">Answer a few questions and the checklist builds itself with only the steps that apply.</p></div>'+
   orgField("off")+
   '<div class="grid2">'+
@@ -1658,7 +1660,7 @@ function holdBanner(){
 function viewList(){
   const list = activeTasks();
   const unplanned = state.intake.departure==="unplanned";
-  let html = '<section class="panel">'+exampleBanner()+
+  let html = '<section class="panel">'+
     '<div><h2>Checklist for '+esc(personLabel())+'</h2><p class="muted">Check each step when it is done. Mark a step as not needed if it does not apply.</p></div>';
   if(unplanned) html += '<div class="banner warn"><span><b>Unplanned exit.</b> Do the steps under Right away before or at the same time the person is told.</span></div>';
   if(hasReg(state.intake,"hold")) html += holdBanner();
@@ -1732,7 +1734,7 @@ function recordText(){
 /* ================= v2.8: records for HR and audits (mirrored in Click by Click Offboarding, each with its own name and address) ================= */
 /* The organization name is optional and kept on each record. A record with no name of its own yet (null) uses the last name typed anywhere.
    The record number is made the first time it is needed and kept with the person, so saving the same person again keeps it. */
-const REC_APP = "Click by Click Access", REC_SITE = "access.catherinejason.com", REC_VERSION = "2.9";
+const REC_APP = "Click by Click Access", REC_SITE = "access.catherinejason.com", REC_VERSION = "2.10";
 const REC_DISCLAIMER = "This record shows the steps your organization marked as done. It is not a certification of compliance and does not replace advice from your IT, HR or legal team.";
 const REC_CODE = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ", REC_NO_RE = /^(ON|OFF)-\d{8}-[2-9A-HJ-NP-Z]{4}$/;
 function recIntake(flow){ return flow==="on"? state.onb.intake : state.intake; }
@@ -1772,7 +1774,25 @@ function recTextEnd(flow){
 /* the date in the credit is the day it prints, even if the page was left open overnight */
 window.addEventListener("beforeprint", ()=>{ document.querySelectorAll(".credline").forEach(p=>{ p.textContent=recCredit(); }); });
 
-const TOP = (function(){ try{ return window.self === window.top }catch(e){ return false } })();
+/* ---------- v2.10: the demo ---------- */
+/* buttons that save or open a file are turned off in the demo, with a short note */
+const DEMO_OFF = ["pfSave","pfOpen","backup","restore","download","exportCSV","exportXLSX","importCSV","csvTemplate","xlsxTemplate","invImport","invCSV","invXLSX","onbDownload","onbCSV","onbXLSX","ics"];
+function demoLock(){
+  if(!DEMO) return;
+  document.querySelectorAll(DEMO_OFF.map(a=>'[data-act="'+a+'"]').join(",")).forEach(b=>{
+    b.disabled=true; b.title="Turned off in the demo";
+    const box=b.closest(".pfopen")||b.closest(".rowbtns,.dls")||b, next=box.nextElementSibling;
+    if(!next || !next.classList.contains("demonote")) box.insertAdjacentHTML("afterend",'<small class="muted demonote">This is the demo, so saving and opening files is turned off.</small>');
+  });
+}
+function demoStart(){
+  if(!DEMO) return;
+  document.querySelector(".wrap").insertAdjacentHTML("afterbegin",'<div class="banner demobanner" role="note"><span><b>This is a demo with sample data.</b> Nothing here is saved. <a href="./" target="_top">Open the tool</a> to start your own.</span></div>');
+  document.getElementById("lnkDemo").hidden=true; 
+  document.title=document.title+" demo"; document.body.classList.add("demo");
+}
+
+const TOP = DEMO || (function(){ try{ return window.self === window.top }catch(e){ return false } })(); /* the demo shows its file buttons, turned off */
 
 function viewRecord(){
   const i = state.intake; const list = activeTasks(); const c = counts(list);
@@ -1802,7 +1822,7 @@ function viewRecord(){
     const pairs=DEV_FIELDS.filter(f=>fieldVisible(dev,f)).map(f=>[f.kind==="enc"? "Encryption" : f.label, fieldText(dev,f)]).filter(p=>p[1]);
     cards += '<div class="ddcard"><b>'+esc(devName(dev))+'</b>'+(pairs.length? '<dl>'+pairs.map(p=>'<dt>'+esc(p[0])+'</dt><dd>'+esc(p[1])+'</dd>').join("")+'</dl>' : '<p class="muted">No other details entered.</p>')+'</div>';
   });
-  return '<section class="panel">'+exampleBanner()+
+  return '<section class="panel">'+
   recTop("off")+'<div><h2>Offboarding record</h2><p class="muted">Proof that access was removed. Keep a copy with your HR or IT files.</p></div>'+
   doneSummary("off")+pfSaveBox("off")+
   moreOptions("off", '<button class="btn" type="button" data-act="copy" id="btnCopy">Copy record</button>'+
@@ -1882,13 +1902,10 @@ function loadFromInventory(){
 }
 
 /* ---------- views ---------- */
-function invExampleBanner(){
-  return state.inventory.some(d=>/^ex/.test(d.id)) ? '<div class="banner"><span><b>Example devices loaded.</b> These are samples so you can see how the inventory works.</span><button class="btn" type="button" data-act="invClearExample">Remove example devices</button></div>' : "";
-}
 function viewInvAll(){
   const inv=state.inventory;
-  let h='<section class="panel">'+invExampleBanner()+'<div><h2>All devices</h2><p class="muted">Every device your organization owns. Click a device to see and edit all of its details.</p></div>'+orgField("inv");
-  if(!inv.length) return h+'<div class="devempty">No devices in the inventory yet.</div><div class="rowbtns"><button class="btn primary" type="button" data-invgo="add">Add or import devices</button><button class="btn" type="button" data-act="invExample">Load example inventory</button></div></section>';
+  let h='<section class="panel">'+'<div><h2>All devices</h2><p class="muted">Every device your organization owns. Click a device to see and edit all of its details.</p></div>'+orgField("inv");
+  if(!inv.length) return h+'<div class="devempty">No devices in the inventory yet.</div><div class="rowbtns"><button class="btn primary" type="button" data-invgo="add">Add or import devices</button></div></section>';
   const staleN=inv.filter(invStale).length;
   if(staleN) h+='<div class="banner warn"><span><b>'+staleN+' device'+(staleN===1?" has":"s have")+' not been updated in over 30 days.</b> '+(staleN===1?"It is":"They are")+' marked with ⚠ below.</span><button class="btn" type="button" data-invgo="reports">See report</button></div>';
   h+='<input type="search" id="invSearch" placeholder="Search model, serial, person, department or location" aria-label="Search devices" value="'+esc(invQuery)+'">';
@@ -1940,7 +1957,7 @@ function invEditor(d){
 function viewInvAdd(){
   const opt=(list,sel)=>list.map(o=>'<option value="'+o[0]+'"'+(o[0]===sel?" selected":"")+'>'+esc(o[1])+'</option>').join("");
   const fld=(id,label,ctl)=>'<div class="field"><label for="'+id+'">'+label+'</label>'+ctl+'</div>';
-  return '<section class="panel">'+invExampleBanner()+
+  return '<section class="panel">'+
     '<div><h2>Add or import</h2><p class="muted">Add one device by hand, or bring in your whole inventory from Excel.</p></div>'+
     '<h3>Add a device</h3>'+
     '<div class="invmain">'+
@@ -1971,7 +1988,7 @@ function reportLists(){
 }
 function viewInvReports(){
   const inv=state.inventory, R=reportLists(), dash='<span class="muted">—</span>';
-  let h='<section class="panel">'+invExampleBanner()+'<div><h2>Reports</h2><p class="muted">As of '+esc(fmt(new Date()))+'.</p></div>';
+  let h='<section class="panel">'+'<div><h2>Reports</h2><p class="muted">As of '+esc(fmt(new Date()))+'.</p></div>';
   if(!inv.length) return h+'<div class="devempty">No devices in the inventory yet.</div><div class="rowbtns"><button class="btn primary" type="button" data-invgo="add">Add or import devices</button></div></section>';
   const dl=k=> TOP? '<span class="dls"><button class="linkbtn" type="button" data-act="invCSV" data-report="'+k+'">Download as .csv</button>'+
     '<button class="linkbtn" type="button" data-act="invXLSX" data-report="'+k+'">Download as .xlsx</button></span>' : '';
@@ -2056,13 +2073,6 @@ function invClick(e){
   const r=t.closest("[data-invrow]"); if(r){ toggleInv(r.dataset.invrow); return true; }
   const a=t.closest("[data-act]"); if(!a) return false;
   const act=a.dataset.act;
-  if(act==="invExample"){ state.inventory=state.inventory.concat(exampleInventory()); save(); redrawKeep(); return true; }
-  if(act==="invClearExample"){
-    const ids=new Set(state.inventory.filter(d=>/^ex/.test(d.id)).map(d=>d.id)); if(!ids.size) return true;
-    askModal({title:"Remove the example devices?", text:"This removes "+pfCount(ids.size,"example device","example devices")+" from the inventory, with any changes made to them. Your own devices stay.",
-      buttons:[{label:"Remove them", kind:"warn", run:()=>{ removeInv(ids); save(); redrawKeep(); }}], focus:1});
-    return true;
-  }
   if(act==="invRemove"){
     const d=state.inventory.find(x=>x.id===a.dataset.dev); if(!d) return true;
     askModal({title:"Remove this device?", text:"This removes "+devName(d)+(d.serial? " ("+d.serial+")" : "")+" from the inventory, with all its details.",
@@ -2120,9 +2130,9 @@ function viewData(){
     '<div class="rowbtns">'+(TOP? '<button class="btn" type="button" data-act="backup">Download backup</button>' : '')+'<button class="btn" type="button" data-act="restore">Restore backup</button></div>'+
     (restoreMsg? '<small role="status" id="restoreMsg">'+esc(restoreMsg)+'</small>' : '')+
     '<small class="muted">The backup file holds names, serial numbers and notes, so keep it somewhere safe, like your other staff records.</small>'+
-    (state.tab==="inv"? moreOptions("inv", '<button class="btn warn" type="button" data-act="clearComputer">Clear this computer</button>') : '')+'</section>';
+    (state.tab==="inv" && !DEMO? moreOptions("inv", '<button class="btn warn" type="button" data-act="clearComputer">Clear this computer</button>') : '')+'</section>';
 }
-function renderData(){ document.getElementById("dataPanel").innerHTML=viewData(); }
+function renderData(){ document.getElementById("dataPanel").innerHTML=viewData(); demoLock(); }
 /* check a backup file before anything changes: wrong, broken or edited files are turned away or cleaned */
 function readBackup(text){
   let p; try{ p=JSON.parse(text); }catch(e){ return {err:"That file could not be read. Pick a backup file downloaded from this app. Nothing was changed."}; }
@@ -2136,10 +2146,9 @@ function readBackup(text){
     " with "+s.devices.length+" device"+(s.devices.length===1?"":"s")+", and onboarding for "+(s.onb.intake.role? '"'+s.onb.intake.role+'"' : "an unnamed person")+"."+when+(dropped? " "+dropped+" entr"+(dropped===1?"y":"ies")+" could not be read and will be left out." : "");
   return {state:s, summary:summary};
 }
-/* a backup is always their own work, even while the example is on screen */
-function downloadBackup(){ saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.9", saved:new Date().toISOString(), data:ownState()}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json"); }
+function downloadBackup(){ saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.10", saved:new Date().toISOString(), data:ownState()}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json"); }
 function restoreBackup(r){
-  const tab=state.tab; exView=null; state=r.state; state.tab=tab; clearViewBits();
+  const tab=state.tab; state=r.state; state.tab=tab; clearViewBits(); dropOldExample();
   save(); restoreMsg = saveFailed? "Restored for now, but this browser could not save it. Its storage may be full or turned off." : "Backup restored.";
   render(); const m=document.getElementById("restoreMsg"); if(m) m.scrollIntoView({block:"center"});
 }
@@ -2304,8 +2313,8 @@ function cleanItems(src){
   return out;
 }
 function normalizeOnb(o){
-  /* v2.1 and older saves have no onboarding: start with the example */
-  if(!o || typeof o!=="object" || Array.isArray(o) || !o.intake || typeof o.intake!=="object" || Array.isArray(o.intake)) return exampleOnb();
+  /* v2.1 and older saves have no onboarding: start empty */
+  if(!o || typeof o!=="object" || Array.isArray(o) || !o.intake || typeof o.intake!=="object" || Array.isArray(o.intake)) return blankOnb();
   const i=o.intake, str=(v,n)=> typeof v==="string"? v.slice(0,n) : "", iso=v=> typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v)? v : "";
   const seen=new Set(), devices=[];
   (Array.isArray(o.devices)? o.devices : []).slice(0,100).forEach(e=>{
@@ -2434,13 +2443,10 @@ function onbUndoSets(id){
 }
 
 /* ---------- onboarding views ---------- */
-function onbBanner(){
-  return state.onb.example && !exView ? '<div class="banner"><span><b>Example loaded.</b> This is a sample person so you can see how it works.</span><button class="btn" type="button" data-act="onbNew">Start your own</button></div>' : "";
-}
 function viewOnbIntake(){
   const i=state.onb.intake, n=onbTasks().length;
   const sys=SYSTEMS.map(s=>'<label for="onbsys_'+s.id+'"><input type="checkbox" id="onbsys_'+s.id+'" data-onbsys="'+s.id+'"'+(has(i,s.id)?" checked":"")+'><span>'+esc(s.label)+(s.hint?'<small>'+esc(s.hint)+'</small>':"")+'</span></label>').join("");
-  return '<section class="panel">'+onbBanner()+pfOpenBox("on")+
+  return '<section class="panel">'+pfOpenBox("on")+
   '<div><h2>Who is starting?</h2><p class="muted">Answer a few questions and the checklist builds itself with only the steps that apply.</p></div>'+
   orgField("on")+
   '<div class="grid2">'+
@@ -2528,7 +2534,7 @@ function viewOnbHandout(){
 function viewOnbList(){
   const list=onbTasks();
   const pm=pfMsg.on && pfMsg.on.list? pfMsg.on : null;
-  let html='<section class="panel">'+onbBanner()+
+  let html='<section class="panel">'+
     (pm? '<div class="banner" role="status" id="pfMsg" tabindex="-1"><span>'+esc(pm.text)+'</span></div>' : '')+
     '<div><h2>Checklist for '+esc(onbPerson())+'</h2><p class="muted">Check each step when it is done. Mark a step as not needed if it does not apply.</p></div>';
   ["before","day","after"].forEach(ph=>{
@@ -2558,7 +2564,7 @@ function viewOnbRecord(){
     '<td>'+esc((e.handed? d.assignedBy : e.assignedBy)||"—")+'</td><td>'+dcell(e.handed? d.dateAssigned : e.dateAssigned)+'</td>'+
     '<td>'+(e.handed? '<span class="st done">Handed out '+esc(fmtStamp(e.at))+'</span>' : '<span class="st open">Not handed out</span>')+'</td></tr>').join("");
   const sys=onbSystemsText();
-  return '<section class="panel">'+onbBanner()+
+  return '<section class="panel">'+
   recTop("on")+'<div><h2>Access granted</h2><p class="muted">A dated record of the access and devices you gave. Keep a copy with your HR or IT files.</p></div>'+
   doneSummary("on")+pfSaveBox("on")+
   moreOptions("on", '<button class="btn" type="button" data-act="onbCopy">Copy record</button>'+
@@ -2633,7 +2639,6 @@ function onbClick(e){
   const g=e.target.closest("[data-onbgo]"); if(g){ goOnb(g.dataset.onbgo); return true; }
   const a=e.target.closest("[data-act]"); if(!a) return false;
   const act=a.dataset.act, o=state.onb;
-  if(act==="onbNew"){ startNew(); return true; }
   if(act==="onbPick"){ const s=document.getElementById("onb_pick"); if(s && s.value){ onbPick(s.value); onbMsg=""; save(); } redrawKeep("#onb_pick"); return true; }
   if(act==="onbNewDev"){
     const val=id=>{ const el=document.getElementById(id); return el? el.value.trim() : ""; };
@@ -2672,7 +2677,7 @@ function onbClick(e){
    and split over cells in column A, with the length and a checksum on the line above. Excel keeps hidden tabs and plain text cells
    when it opens and saves a workbook, and base64 has no spaces or symbols Excel could change, so the file still reopens after that.
    Opening checks the size, the zip, the checksum and every value, treats every value as text and never runs anything from the file. */
-const PF_APP = "Click by Click Access", PF_KIND = "person file", PF_FORMAT = 1, PF_VERSION = "2.9";
+const PF_APP = "Click by Click Access", PF_KIND = "person file", PF_FORMAT = 1, PF_VERSION = "2.10";
 const PF_MAX_BYTES = 5000000, PF_CHUNK = 30000, PF_SHEET = "Data";
 const PF_ACCEPT = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 let pfMsg = {on:null, off:null};      /* what the open box says: {text, warn, go} */
@@ -2880,7 +2885,7 @@ function pfBuild(flow, saved){
 }
 /* Chrome and Edge open a Save As window with the name filled in; other browsers download it */
 async function pfSave(flow){
-  if(exView) return;
+  if(DEMO) return;
   { const ri=recIntake(flow); if(typeof ri.org!=="string") ri.org=orgRaw(flow); recNo(flow); }
   const firstSave = flow==="on" && !state.onb.fileDate;
   if(firstSave) state.onb.fileDate = state.onb.intake.startDate || todayISO(); /* the onboarding date stays in the name from now on */
@@ -3074,7 +3079,6 @@ function pfOpen(mode){
 
 /* ---------- views ---------- */
 function pfOpenBox(flow){
-  if(exView) return '';
   const m=pfMsg[flow];
   const btn=(mode,label)=>'<button class="btn" type="button" data-act="pfOpen" data-mode="'+mode+'">'+label+'</button>';
   return '<div class="pfopen"><div class="pfhead"><span class="tag">Optional</span><b>'+(flow==="on"? "Picking up an onboarding?" : "Have a saved file for them?")+'</b></div>'+
@@ -3087,7 +3091,6 @@ function pfOpenBox(flow){
 }
 function pfSaveBox(flow){
   const print='<button class="btn" type="button" data-act="print">Print or save as PDF for HR</button>';
-  if(exView) return '<div class="pfsave"><div class="rowbtns">'+print+'</div><p class="muted">Saving a file is turned off in the example. Exit the example to save your own work.</p></div>';
   if(!TOP) return "";
   const first=pfFirst(flow), name=pfName(flow), year=(flow==="on"? pfFileDate("on") : todayISO()).slice(0,4);
   return '<div class="pfsave"><div class="rowbtns"><button class="btn primary" type="button" data-act="pfSave" data-flow="'+flow+'">Save '+esc(first? pfPoss(first) : "their")+' file</button>'+print+'</div>'+
@@ -3107,7 +3110,6 @@ function pfClick(e){
   if(act==="pfRename"){ pfNameEdit[flow]=true; redrawKeep("#pfName_"+flow); const f=document.getElementById("pfName_"+flow); if(f) f.select(); return true; }
   if(act==="pfNameDone"){ pfNameEdit[flow]=false; redrawKeep('[data-act="pfRename"]'); return true; }
   if(act==="pfNameAuto"){ if(flow==="on"){ state.onb.fileName=""; save(); } else pfOffName=""; pfNameEdit[flow]=false; redrawKeep('[data-act="pfRename"]'); return true; }
-  if(act==="exitExample"){ exitExample(); return true; }
   if(act==="ics"){ saveIcs(); return true; }
   if(act==="pfGo"){ if(state.tab==="on") goOnb("list"); else go("list"); return true; }
   return false;
@@ -3140,36 +3142,14 @@ function pfMarkSaved(flow){ if(flow==="on") state.onb.fileSig=pfSig("on", state)
 function pfUnsaved(flow, s){
   return flow==="on"? onbEntered(s.onb) && s.onb.fileSig!==pfSig("on", s) : offEntered(s) && s.fileSig!==pfSig("off", s);
 }
-/* the person's own work, even while the example is on screen */
-function ownState(){ return exView? JSON.parse(exView.json) : state; }
+function ownState(){ return state; }
 window.addEventListener("beforeunload", e=>{
-  if(clearing) return; /* Clear this computer reloads on purpose */
+  if(DEMO || clearing) return; /* the demo saves nothing; Clear this computer reloads on purpose */
   let s; try{ s=ownState(); }catch(err){ return; }
   if(pfUnsaved("off", s) || pfUnsaved("on", s)){ e.preventDefault(); e.returnValue=""; }
 });
 
-/* ---------- the example is a separate view ---------- */
-/* Load example puts their work aside, untouched. Nothing done in the example is saved, and Exit example brings back exactly what they had. */
-function exampleState(base){
-  const ex=example(); ex.onb=exampleOnb();
-  return Object.assign(ex, {learn:base.learn, tab: base.tab==="inv"? "off" : base.tab, invStep:base.invStep, inventory:JSON.parse(JSON.stringify(base.inventory)), lastOrg:base.lastOrg, invOrg:base.invOrg});
-}
 function clearViewBits(){ openMore.clear(); openInv.clear(); snOpen.clear(); learnOpen.clear(); learnClosed.clear(); importMsg=""; invMsg=""; onbMsg=""; invQuery=""; invFilter="all"; pfReset(); }
-function loadExample(){
-  const own = exView? exView.json : JSON.stringify(state);
-  const ex=exampleState(exView? JSON.parse(own) : state);
-  if(exView) ex.tab=state.tab==="inv"? "off" : state.tab;
-  exView={json:own}; state=ex; clearViewBits(); render(); window.scrollTo({top:0, behavior:"smooth"});
-}
-function exitExample(){
-  if(!exView) return;
-  state=JSON.parse(exView.json); exView=null; clearViewBits(); render(); window.scrollTo({top:0, behavior:"smooth"});
-  const b=document.getElementById("btnExample"); if(b) b.focus({preventScroll:true});
-}
-function exViewBanner(){
-  return exView? '<div class="banner exview" role="status"><span><b>You\'re looking at an example.</b> Your own work is saved and untouched. Changes here are not saved.</span><button class="btn primary" type="button" data-act="exitExample">Exit example</button></div>' : '';
-}
-
 /* ---------- the pop-up ---------- */
 /* o: {title, text, buttons:[{label, kind:"primary"|"warn"|"", run, stay}], focus: index, back: selector to focus after a redraw}
    A button closes the pop-up first and then runs, so the page can take focus again. stay: it runs with the pop-up still open.
@@ -3277,7 +3257,7 @@ function checks30(){
   return '<div class="checks30" id="checks30"><h3>'+esc(pfCount(left.length,"check","checks")+" left for "+(d? fmtShort(d) : "30 days after the start date"))+'</h3>'+
     '<ul>'+left.map(t=>'<li>'+esc(t.title)+'</li>').join("")+'</ul>'+
     (d? '<p>On '+esc(fmtShort(d))+', open '+esc(first? pfPoss(first) : "their")+' file and these checks will be waiting.</p>' : '<p class="muted">Add a start date on the intake to see the date.</p>')+
-    (d && TOP && !exView? '<div class="rowbtns"><button class="btn" type="button" data-act="ics">Add '+esc(fmtShort(d))+' to my calendar</button></div>' : '')+'</div>';
+    (d && TOP? '<div class="rowbtns"><button class="btn" type="button" data-act="ics">Add '+esc(fmtShort(d))+' to my calendar</button></div>' : '')+'</div>';
 }
 /* a small all day calendar event, made in the browser (iCalendar, RFC 5545): Outlook, Google Calendar and Apple Calendar all open it */
 function icsText(dateISO, title, note, stamp, id){
@@ -3322,14 +3302,13 @@ function render(){
   /* the progress card and the Learn mode, example and start new buttons belong to a person, so Inventory has none */
   document.getElementById("card").hidden = tab==="inv";
   document.querySelector(".top .actions").hidden = tab==="inv";
-  document.getElementById("btnNew").hidden = !!exView;
-  v.innerHTML = exViewBanner() + (tab==="on" ? (state.onb.step==="list" ? viewOnbList() : state.onb.step==="record" ? viewOnbRecord() : viewOnbIntake())
+  v.innerHTML = (tab==="on" ? (state.onb.step==="list" ? viewOnbList() : state.onb.step==="record" ? viewOnbRecord() : viewOnbIntake())
     : tab==="inv" ? (state.invStep==="add" ? viewInvAdd() : state.invStep==="reports" ? viewInvReports() : viewInvAll())
     : state.step==="list" ? viewList() : state.step==="record" ? viewRecord() : viewIntake());
   document.getElementById("learnMore").innerHTML = viewLearnMore();
   document.getElementById("dataPanel").innerHTML = viewData();
   const lb=document.getElementById("btnLearn"); lb.setAttribute("aria-pressed", String(!!state.learn)); lb.textContent = "Learn mode: "+(state.learn?"On":"Off");
-  renderCard();
+  renderCard(); demoLock();
 }
 function go(step){ importMsg=""; pfReset(); state.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
 function goInv(step){ importMsg=""; invMsg=""; state.invStep=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
@@ -3427,7 +3406,6 @@ view.addEventListener("click",e=>{
   if(onbClick(e)) return;
   const a=e.target.closest("[data-act]"); if(!a) return;
   const act=a.dataset.act;
-  if(act==="new"){ startNew(); return; }
   if(act==="loadInv"){ importMsg=loadFromInventory(); save(); const y=window.scrollY; render(); window.scrollTo(0,y); const b=view.querySelector('[data-act="loadInv"]'); if(b) b.focus({preventScroll:true}); return; }
   if(act==="copy"){ copyRecord(a); return; }
   if(act==="download"){ download(); return; }
@@ -3502,13 +3480,12 @@ function download(){
 }
 
 const btnNew=document.getElementById("btnNew");
-/* Start new and Load example work on the person in the open tab, and never touch the inventory */
+/* Start new works on the person in the open tab, and never touches the inventory */
 function startNew(){
-  if(exView){ exitExample(); return; }
   const flow = state.tab==="on"? "on" : "off", entered = flow==="on"? onbEntered(state.onb) : offEntered(state);
   if(!entered){ clearPerson(flow); return; } /* nothing to lose */
   askModal({title:"Start over?", text:"This clears everything entered for "+personName(flow)+". Your inventory stays.",
-    buttons:(TOP? [saveFirstButton(flow)] : []).concat([{label:"Clear it", kind:"warn", run:()=>{ clearPerson(flow); }}]), back:"#btnNew"});
+    buttons:(TOP && !DEMO? [saveFirstButton(flow)] : []).concat([{label:"Clear it", kind:"warn", run:()=>{ clearPerson(flow); }}]), back:"#btnNew"});
 }
 /* ---------- v2.9: Clear this computer ---------- */
 /* removes everything this app saved in this browser (only its own keys, never other apps on the same address), then reloads to an empty app */
@@ -3518,14 +3495,11 @@ function clearComputer(){
     buttons:[{label:"Clear everything", kind:"warn", run:()=>{
       clearing=true;
       try{ Object.keys(localStorage).filter(k=>k.indexOf("cbc-access")===0).forEach(k=>localStorage.removeItem(k)); }catch(e){}
-      try{ history.replaceState(null, "", location.pathname+location.search+"#cleared"); }catch(e){}
       location.reload();
     }}], back:"[data-act=\"clearComputer\"]"});
 }
-function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb, lastOrg:state.lastOrg, invOrg:state.invOrg}; }
+function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb, lastOrg:state.lastOrg, invOrg:state.invOrg, exAsked:state.exAsked}; }
 btnNew.addEventListener("click",startNew);
-/* Load example opens a separate example view and never touches their work */
-document.getElementById("btnExample").addEventListener("click", loadExample);
 /* Learn mode opens or closes every explanation, the glossary and the sources at once */
 document.getElementById("btnLearn").addEventListener("click",()=>{
   state.learn=!state.learn; learnOpen.clear(); learnClosed.clear(); save();
@@ -3538,7 +3512,51 @@ document.addEventListener("toggle",e=>{
   else { if(d.open) learnOpen.add(k); else learnOpen.delete(k); }
 }, true);
 
+
+/* ---------- v2.10: the example is no longer part of the app ---------- */
+/* Older versions saved the example person as the person's own work. An untouched one is dropped quietly. One that was typed over is kept, because it may hold real work. */
+function exPick(o, keys){ const r={}; keys.forEach(k=>{ r[k]=o? o[k] : null; }); return r; }
+function exSig(intake, keys, items, devices){
+  const it={}; Object.keys(items||{}).sort().forEach(k=>{ const s=items[k]||{}; it[k]=[s.status||"", s.note||""]; });
+  return JSON.stringify({i:exPick(intake, keys), it:it, d:(devices||[]).map(d=>[d.type, d.model, d.serial, d.os||"", d.enc||"", d.status||""])});
+}
+const EX_KEYS = ["role","type","departure","doneBy","admin","systems","other"];
+function dropOldExample(){
+  let changed=false;
+  if(state.example){
+    const ex=example();
+    if(exSig(state.intake, EX_KEYS, state.items, state.devices)===exSig(ex.intake, EX_KEYS, ex.items, ex.devices)){ const keep={learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb, lastOrg:state.lastOrg, invOrg:state.invOrg, exAsked:state.exAsked}; state=Object.assign(blank(), keep); }
+    else state.example=false;
+    changed=true;
+  }
+  if(state.onb.example){
+    const eo=exampleOnb(), K=["role","type","doneBy","admin","adminWhy","systems","other"];
+    if(!state.onb.devices.length && exSig(state.onb.intake, K, state.onb.items, [])===exSig(eo.intake, K, eo.items, [])) state.onb=blankOnb(); else state.onb.example=false;
+    changed=true;
+  }
+  if(changed) save();
+}
+/* sample devices from the old example are found by their example ids (ex...), and the pop-up asks once */
+function askOldSamples(){
+  if(DEMO || state.exAsked) return;
+  const old=state.inventory.filter(d=>/^ex/.test(d.id)); if(!old.length) return;
+  const ids=new Set(old.map(d=>d.id)); state.exAsked=true; save();
+  askModal({title:"We found sample devices from the old example in your inventory. Remove them?",
+    text:pfCount(ids.size,"sample device","sample devices")+", like "+devName(old[0])+". Your own devices stay.",
+    buttons:[{label:"Remove them", kind:"warn", run:()=>{
+      removeInv(ids); state.onb.devices=state.onb.devices.filter(e=>!ids.has(e.invId));
+      Object.keys(state.onb.sets||{}).forEach(k=>{ state.onb.sets[k]=state.onb.sets[k].filter(u=>!ids.has(u.invId)); });
+      save(); redrawKeep();
+    }}]});
+}
+function demoState(){
+  const s=example(); s.example=false; s.onb=exampleOnb(); s.onb.example=false; s.inventory=exampleInventory(); s.tab="on";
+  return s;
+}
+if(DEMO) state=demoState(); else dropOldExample();
+demoStart();
 render();
+askOldSamples();
 })();
 </script>
 </body>
