@@ -23,6 +23,7 @@ Expected differences, which do not need mirroring:
 - Features only in Access: the Onboarding tab, the Inventory tab, backup and restore, and the links between them (for example "Load their devices from inventory", the name picker, check in and hand out updating the inventory). Access may add hooks around shared code for these, as long as the shared behavior stays the same.
 - Person files are Access only (v2.6, the "v2.6 (Access only): Person files" block). Each person gets one .xlsx saved at the Record step, with readable tabs and a hidden Data tab the app reopens from. Do not add them to Offboarding.
 - Also Access only since v2.6: Load example opens a separate example view that never saves, the in-page pop-up before anything is erased or replaced, and the browser's leave warning for work not yet saved to a file.
+- Also Access only since v2.7: the start screen with its Home link, the done summary, main buttons and More options at the top of each Record step, the print layout, and the onboarding 30 day check box with its calendar (.ics) file.
 - Onboarding adds its own steps, "Why this matters" text, the PR.AT-01 and CIS Control 14 tags, glossary terms and sources in the "v2.2 (Access only): Onboarding" block. Those are not mirrored. Edit them there, not in the shared lists.
 
 ## Working rules
