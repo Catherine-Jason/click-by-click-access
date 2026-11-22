@@ -286,6 +286,11 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
   .card{grid-template-columns:auto 1fr}
   .card .status{grid-column:1 / -1; justify-self:start}
 }
+/* v2.7.2: on the narrowest phones the step number sits above its label, so the steps bar fits at 320 wide */
+@media (max-width:359px){
+  nav.steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+  nav.steps button{flex-direction:column; gap:3px; padding:8px 4px; font-size:13px}
+}
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
 @media print{
   /* v2.7: only the record prints, in dark ink on white, with the person, dates and who completed it at the top */
@@ -337,7 +342,7 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.7.1 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.7.2 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
