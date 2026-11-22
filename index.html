@@ -291,6 +291,10 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
   nav.steps{grid-template-columns:repeat(3,minmax(0,1fr))}
   nav.steps button{flex-direction:column; gap:3px; padding:8px 4px; font-size:13px}
 }
+/* v2.8: records for HR and audits. Sign off lines, credit and disclaimer print only; page numbers sit in the bottom margin of every printed page */
+.rectop{display:flex; flex-wrap:wrap; gap:2px 20px; font-size:13.5px; color:var(--muted)} .rectop p{margin:0} .rectop b{color:var(--ink)}
+@media screen{ .printonly{display:none!important} }
+@page{ margin:0.6in 0.6in 0.75in; @bottom-center{ content:"Page " counter(page) " of " counter(pages); font-family:"IBM Plex Sans", Arial, sans-serif; font-size:9pt; color:#555 } }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
 @media print{
   /* v2.7: only the record prints, in dark ink on white, with the person, dates and who completed it at the top */
@@ -301,6 +305,12 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
   .panel{border:0; padding:0}
   *{box-shadow:none!important; text-shadow:none!important}
   tr,.ddcard,.donesum,.checks30{break-inside:avoid}
+  :root{color-scheme:light; background:#fff} /* white page edges in PDFs, where backgrounds print */
+  .rectop{color:#000; font-size:11pt}
+  .signoff{margin-top:28px; display:grid; gap:26px; break-inside:avoid}
+  .sl{display:grid; grid-template-columns:auto minmax(0,1fr) auto 10em; gap:8px; align-items:end; font-size:11pt}
+  .sl .line{border-bottom:1px solid #000; min-height:1.5em; padding:0 4px}
+  .credit{margin-top:22px; font-size:8.5pt; color:#555; break-inside:avoid} .credit p{margin:2px 0}
 }
 </style>
 </head>
@@ -342,7 +352,7 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.7.2 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.8 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
@@ -1092,7 +1102,7 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;",
 
 function nextFriday(){const d=new Date(); const add=(5-d.getDay()+7)%7||7; return isoDate(addDays(d,add))}
 function blankRegs(){ return {hipaa:false, pci:false, ferpa:false, hold:false}; }
-function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], onb:blankOnb(), intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs(), dept:""}, items:{}, devices:[], fromOnb:null, fileSig:""} }
+function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], onb:blankOnb(), intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs(), dept:"", org:null, recNo:""}, items:{}, devices:[], fromOnb:null, fileSig:"", lastOrg:"", invOrg:null} }
 function example(){
   const s = blank(); s.example = true;
   s.intake = {role:"Volunteer events lead", type:"volunteer", departure:"planned", lastDay:nextFriday(), doneBy:"Office manager", admin:false,
@@ -1152,17 +1162,22 @@ function normalizeState(s){
     tab: ["on","off","inv"].indexOf(s.tab)!==-1? s.tab : "off", invStep: ["all","add","reports"].indexOf(s.invStep)!==-1? s.invStep : "all",
     intake: {role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", departure: i.departure==="unplanned"? "unplanned" : "planned",
       lastDay: typeof i.lastDay==="string" && /^\d{4}-\d{2}-\d{2}$/.test(i.lastDay)? i.lastDay : "", doneBy:str(i.doneBy,200), admin: i.admin===true,
-      systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000), regs:r, dept:str(i.dept,200)},
+      systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000), regs:r, dept:str(i.dept,200), org:recOrgIn(i.org), recNo:recNoIn(i.recNo)},
     items: cleanItems(s.items), devices: cleanDevices(s.devices, false), inventory: cleanDevices(s.inventory, true),
     onb: normalizeOnb(s.onb),
     /* v2.6: what they were given at onboarding, and the fingerprint of the last saved person file */
-    fromOnb: pfCleanFromOnb(s.fromOnb), fileSig: typeof s.fileSig==="string"? s.fileSig.slice(0,16) : ""
+    fromOnb: pfCleanFromOnb(s.fromOnb), fileSig: typeof s.fileSig==="string"? s.fileSig.slice(0,16) : "",
+    /* v2.8: the last organization name typed, and the one on the Inventory tab */
+    lastOrg: str(s.lastOrg,200), invOrg: recOrgIn(s.invOrg)
   };
   /* a device id must point to one device only */
   const invIds=new Set(out.inventory.map(d=>d.id));
   out.devices.forEach(d=>{ while(invIds.has(d.id)) d.id+="o"; });
   return out;
 }
+/* v2.7 and older saves have no organization name (null means use the last one typed) or record number */
+function recOrgIn(v){ return typeof v==="string"? v.slice(0,200) : null; }
+function recNoIn(v){ return typeof v==="string" && /^(ON|OFF)-\d{8}-[2-9A-HJ-NP-Z]{4}$/.test(v)? v : ""; }
 function load(){ try{ const raw=localStorage.getItem(KEY); if(raw) return normalizeState(JSON.parse(raw)); }catch(e){} return null }
 let exView = null; /* v2.6: while the example is on screen, the person's own work waits here untouched and nothing is saved */
 let saveFailed=false;
@@ -1493,6 +1508,7 @@ function viewIntake(){
   const n = activeTasks().length;
   return '<section class="panel">'+exampleBanner()+pfOpenBox("off")+
   '<div><h2>Who is leaving?</h2><p class="muted">Answer a few questions and the checklist builds itself with only the steps that apply.</p></div>'+
+  orgField("off")+
   '<div class="grid2">'+
     '<div class="field"><label for="role">Role or name</label><input type="text" id="role" placeholder="Example: Program assistant" value="'+esc(i.role)+'"><small>A role is enough if you would rather not save a name here.</small></div>'+
     '<div class="field"><label for="doneBy">Completed by</label><input type="text" id="doneBy" placeholder="Who is doing the offboarding" value="'+esc(i.doneBy)+'"></div>'+
@@ -1683,8 +1699,51 @@ function recordText(){
       });
     });
   }
-  return lines.join("\n");
+  return lines.concat(recTextEnd("off")).join("\n");
 }
+
+/* ================= v2.8: records for HR and audits (mirrored in Click by Click Offboarding, each with its own name and address) ================= */
+/* The organization name is optional and kept on each record. A record with no name of its own yet (null) uses the last name typed anywhere.
+   The record number is made the first time it is needed and kept with the person, so saving the same person again keeps it. */
+const REC_APP = "Click by Click Access", REC_SITE = "access.catherinejason.com", REC_VERSION = "2.8";
+const REC_DISCLAIMER = "This record shows the steps your organization marked as done. It is not a certification of compliance and does not replace advice from your IT, HR or legal team.";
+const REC_CODE = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ", REC_NO_RE = /^(ON|OFF)-\d{8}-[2-9A-HJ-NP-Z]{4}$/;
+function recIntake(flow){ return flow==="on"? state.onb.intake : state.intake; }
+function orgRaw(flow){ const v = flow==="inv"? state.invOrg : recIntake(flow).org; return typeof v==="string"? v : (typeof state.lastOrg==="string"? state.lastOrg : ""); }
+function orgOf(flow){ return orgRaw(flow).replace(/\s+/g," ").trim(); }
+function setOrg(flow, v){ v=String(v).slice(0,200); if(flow==="inv") state.invOrg=v; else recIntake(flow).org=v; state.lastOrg=v; save(); }
+function makeRecNo(flow){
+  const r=new Uint8Array(4); crypto.getRandomValues(r);
+  return (flow==="on"? "ON" : "OFF")+"-"+todayISO().replace(/-/g,"")+"-"+Array.from(r, b=>REC_CODE[b % REC_CODE.length]).join("");
+}
+function recNo(flow){ const i=recIntake(flow); if(!REC_NO_RE.test(i.recNo||"")){ i.recNo=makeRecNo(flow); save(); } return i.recNo; }
+function recCredit(dateISO){ return "Created with "+REC_APP+" v"+REC_VERSION+" · "+REC_SITE+" · "+fmtShort(dateISO||todayISO()); }
+function orgField(flow){
+  const id = flow==="on"? "onb_org" : flow==="inv"? "inv_org" : "org";
+  return '<div class="grid2"><div class="field"><label for="'+id+'">Organization name</label><input type="text" id="'+id+'" maxlength="200" autocomplete="organization" placeholder="Optional" value="'+esc(orgRaw(flow))+'">'+
+    '<small>Optional. Printed at the top of '+(flow==="inv"? "inventory files" : "the record")+' as Prepared for, and filled in for you next time.</small></div></div>';
+}
+/* top of the record: who it is for and its number */
+function recTop(flow){
+  const o=orgOf(flow);
+  return '<div class="rectop">'+(o? '<p class="prepared">Prepared for <b>'+esc(o)+'</b></p>' : '')+'<p class="recno">Record number <b class="mono">'+esc(recNo(flow))+'</b></p></div>';
+}
+/* end of the printed record: sign off lines, then the credit and disclaimer */
+function recBottom(flow){
+  const by=(recIntake(flow).doneBy||"").replace(/\s+/g," ").trim();
+  const line=(label, val)=>'<div class="sl"><span>'+label+':</span><span class="line">'+esc(val)+'</span><span>Date:</span><span class="line"></span></div>';
+  return '<div class="signoff printonly">'+line("Completed by", by)+line("Reviewed by", "")+'</div>'+
+    '<div class="credit printonly"><p class="credline">'+esc(recCredit())+'</p><p>'+esc(REC_DISCLAIMER)+'</p></div>';
+}
+/* end of the text file and copied record */
+function recTextEnd(flow){
+  const o=orgOf(flow), out=[""];
+  if(o) out.push("Prepared for "+o);
+  out.push("Record number: "+recNo(flow), "", recCredit(), REC_DISCLAIMER);
+  return out;
+}
+/* the date in the credit is the day it prints, even if the page was left open overnight */
+window.addEventListener("beforeprint", ()=>{ document.querySelectorAll(".credline").forEach(p=>{ p.textContent=recCredit(); }); });
 
 const TOP = (function(){ try{ return window.self === window.top }catch(e){ return false } })();
 
@@ -1717,7 +1776,7 @@ function viewRecord(){
     cards += '<div class="ddcard"><b>'+esc(devName(dev))+'</b>'+(pairs.length? '<dl>'+pairs.map(p=>'<dt>'+esc(p[0])+'</dt><dd>'+esc(p[1])+'</dd>').join("")+'</dl>' : '<p class="muted">No other details entered.</p>')+'</div>';
   });
   return '<section class="panel">'+exampleBanner()+
-  '<div><h2>Offboarding record</h2><p class="muted">Proof that access was removed. Keep a copy with your HR or IT files.</p></div>'+
+  recTop("off")+'<div><h2>Offboarding record</h2><p class="muted">Proof that access was removed. Keep a copy with your HR or IT files.</p></div>'+
   doneSummary("off")+pfSaveBox("off")+
   moreOptions("off", '<button class="btn" type="button" data-act="copy" id="btnCopy">Copy record</button>'+
     (TOP? '<button class="btn" type="button" data-act="download">Download as text file</button>'+(state.devices.length?'<button class="btn" type="button" data-act="exportCSV">Download devices for Excel (.csv)</button><button class="btn" type="button" data-act="exportXLSX">Download devices for Excel (.xlsx)</button>':'') : ''))+
@@ -1740,6 +1799,7 @@ function viewRecord(){
     '<h3>Device details</h3><div class="devdetails">'+cards+'</div>'+
     '<p class="note">'+NOTE_DISPOSAL+'</p>'+((d.out||d.missing)? '<p class="note">'+NOTE_EQUIPMENT+'</p>' : '') : "")+
   '<p class="muted aligned-note">Steps are aligned with the frameworks shown, not a certification of compliance. Laws vary by state and by the type of data you hold.</p>'+
+  recBottom("off")+
   '</section>';
 }
 
@@ -1800,7 +1860,7 @@ function invExampleBanner(){
 }
 function viewInvAll(){
   const inv=state.inventory;
-  let h='<section class="panel">'+invExampleBanner()+'<div><h2>All devices</h2><p class="muted">Every device your organization owns. Click a device to see and edit all of its details.</p></div>';
+  let h='<section class="panel">'+invExampleBanner()+'<div><h2>All devices</h2><p class="muted">Every device your organization owns. Click a device to see and edit all of its details.</p></div>'+orgField("inv");
   if(!inv.length) return h+'<div class="devempty">No devices in the inventory yet.</div><div class="rowbtns"><button class="btn primary" type="button" data-invgo="add">Add or import devices</button><button class="btn" type="button" data-act="invExample">Load example inventory</button></div></section>';
   const staleN=inv.filter(invStale).length;
   if(staleN) h+='<div class="banner warn"><span><b>'+staleN+' device'+(staleN===1?" has":"s have")+' not been updated in over 30 days.</b> '+(staleN===1?"It is":"They are")+' marked with ⚠ below.</span><button class="btn" type="button" data-invgo="reports">See report</button></div>';
@@ -1919,6 +1979,13 @@ function invReport(r){
     missing:[R.missing,[],"missing","Missing"], warranty:[R.warranty,[["Days until warranty ends",d=>warrantyDays(d)]],"warranty-90-days","Warranty ending"]}[r];
   return pick? {file:"inventory-"+pick[2], sheet:pick[3], rows:invRows(pick[0],pick[1])} : null;
 }
+/* v2.8: the Read me tab of an inventory .xlsx, with the organization name, credit and disclaimer like person files */
+function invReadMe(sheet){
+  const rows=[[{bold:"About this file"}], ["This is the "+sheet+" report from your device inventory, saved from Click by Click Access on "+fmtShort(todayISO())+"."]];
+  if(orgOf("inv")) rows.push(["Prepared for "+orgOf("inv")]);
+  rows.push([""], ["The devices are on the first tab. To bring them back into the app, choose Import from Excel on the Inventory tab."], [""], [recCredit()], [REC_DISCLAIMER]);
+  return rows;
+}
 function exampleInventory(){
   const ago=n=>isoDate(addDays(new Date(),-n)), ahead=n=>isoDate(addDays(new Date(),n));
   const mk=o=>{ const d=Object.assign(newDevice(o.type), o); d.id=uid("ex"); return d; };
@@ -2012,7 +2079,7 @@ function invClick(e){
   if(act==="invCSV" || act==="invXLSX"){
     const rep=invReport(a.dataset.report), day=todayISO(); if(!rep) return true;
     if(act==="invCSV") saveFile(csvFrom(rep.rows), rep.file+"-"+day+".csv", "text/csv;charset=utf-8");
-    else saveFile(xlsxFile(rep.rows, rep.sheet), rep.file+"-"+day+".xlsx", XLSX_TYPE);
+    else saveFile(xlsxBook([{name:rep.sheet, rows:rep.rows, freeze:true, filter:true}, {name:"Read me", rows:invReadMe(rep.sheet), header:false, maxWidth:100}]), rep.file+"-"+day+".xlsx", XLSX_TYPE);
     return true;
   }
   return false;
@@ -2042,7 +2109,7 @@ function readBackup(text){
   return {state:s, summary:summary};
 }
 /* a backup is always their own work, even while the example is on screen */
-function downloadBackup(){ saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.7", saved:new Date().toISOString(), data:ownState()}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json"); }
+function downloadBackup(){ saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.8", saved:new Date().toISOString(), data:ownState()}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json"); }
 function restoreBackup(r){
   const tab=state.tab; exView=null; state=r.state; state.tab=tab; clearViewBits();
   save(); restoreMsg = saveFailed? "Restored for now, but this browser could not save it. Its storage may be full or turned off." : "Backup restored.";
@@ -2190,7 +2257,7 @@ const ON_STEPS = [["intake",'Intake<span class="lbl-long"> questions</span>'],["
 let onbMsg = "";
 
 function nextMonday(){ const d=new Date(); const add=(1-d.getDay()+7)%7||7; return isoDate(addDays(d,add)); }
-function blankOnb(){ return {step:"intake", example:false, intake:{role:"", type:"staff", startDate:"", doneBy:"", admin:false, adminWhy:"", systems:[], other:"", dept:"", approvedBy:""}, items:{}, devices:[], sets:{}, fileDate:"", fileName:"", fileSig:""}; }
+function blankOnb(){ return {step:"intake", example:false, intake:{role:"", type:"staff", startDate:"", doneBy:"", admin:false, adminWhy:"", systems:[], other:"", dept:"", approvedBy:"", org:null, recNo:""}, items:{}, devices:[], sets:{}, fileDate:"", fileName:"", fileSig:""}; }
 function exampleOnb(){
   const o=blankOnb(); o.example=true;
   o.intake={role:"Program assistant", type:"staff", startDate:nextMonday(), doneBy:"Office manager", admin:false, adminWhy:"", systems:["email","cloud","database","sharedpw","laptop","keys"], other:"Scheduling app", dept:"Programs", approvedBy:"Executive director"};
@@ -2222,7 +2289,7 @@ function normalizeOnb(o){
   return {step: ["intake","list","record"].indexOf(o.step)!==-1? o.step : "intake", example: o.example===true,
     intake:{role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", startDate:iso(i.startDate), doneBy:str(i.doneBy,200),
       admin: i.admin===true, adminWhy:str(i.adminWhy,300), systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000),
-      dept:str(i.dept,200), approvedBy:str(i.approvedBy,200)},
+      dept:str(i.dept,200), approvedBy:str(i.approvedBy,200), org:recOrgIn(i.org), recNo:recNoIn(i.recNo)},
     items: cleanItems(o.items), devices: devices, sets: cleanSets(o.sets),
     /* v2.6: the date in the person file's name, a name they typed, and the fingerprint of the last saved file */
     fileDate:iso(o.fileDate), fileName:str(o.fileName,160), fileSig:str(o.fileSig,16)};
@@ -2345,6 +2412,7 @@ function viewOnbIntake(){
   const sys=SYSTEMS.map(s=>'<label for="onbsys_'+s.id+'"><input type="checkbox" id="onbsys_'+s.id+'" data-onbsys="'+s.id+'"'+(has(i,s.id)?" checked":"")+'><span>'+esc(s.label)+(s.hint?'<small>'+esc(s.hint)+'</small>':"")+'</span></label>').join("");
   return '<section class="panel">'+onbBanner()+pfOpenBox("on")+
   '<div><h2>Who is starting?</h2><p class="muted">Answer a few questions and the checklist builds itself with only the steps that apply.</p></div>'+
+  orgField("on")+
   '<div class="grid2">'+
     '<div class="field"><label for="onb_role">Role or name</label><input type="text" id="onb_role" placeholder="Example: Program assistant" value="'+esc(i.role)+'"><small>Devices you hand out are assigned to this name in the inventory.</small></div>'+
     '<div class="field"><label for="onb_doneBy">Completed by</label><input type="text" id="onb_doneBy" placeholder="Who is doing the onboarding" value="'+esc(i.doneBy)+'"></div>'+
@@ -2461,7 +2529,7 @@ function viewOnbRecord(){
     '<td>'+(e.handed? '<span class="st done">Handed out '+esc(fmtStamp(e.at))+'</span>' : '<span class="st open">Not handed out</span>')+'</td></tr>').join("");
   const sys=onbSystemsText();
   return '<section class="panel">'+onbBanner()+
-  '<div><h2>Access granted</h2><p class="muted">A dated record of the access and devices you gave. Keep a copy with your HR or IT files.</p></div>'+
+  recTop("on")+'<div><h2>Access granted</h2><p class="muted">A dated record of the access and devices you gave. Keep a copy with your HR or IT files.</p></div>'+
   doneSummary("on")+pfSaveBox("on")+
   moreOptions("on", '<button class="btn" type="button" data-act="onbCopy">Copy record</button>'+
     (TOP? '<button class="btn" type="button" data-act="onbDownload">Download as text file</button><button class="btn" type="button" data-act="onbCSV">Download for Excel (.csv)</button><button class="btn" type="button" data-act="onbXLSX">Download for Excel (.xlsx)</button>' : ''))+
@@ -2481,6 +2549,7 @@ function viewOnbRecord(){
   '<div class="tablewrap"><table><thead><tr><th>When</th><th>Step</th><th>Status</th><th>Note</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
   (devs.length? '<h3>Devices</h3><div class="tablewrap"><table class="wide"><thead><tr><th>Device</th><th>OS</th><th>Encryption</th><th>MDM</th><th>Antivirus</th><th>Last updated</th><th>Assigned by</th><th>Date assigned</th><th>Hand out</th></tr></thead><tbody>'+devRows+'</tbody></table></div>' : '')+
   '<p class="muted aligned-note">Steps are aligned with the frameworks shown, not a certification of compliance.</p>'+
+  recBottom("on")+
   '</section>';
 }
 function onbRecordText(){
@@ -2513,7 +2582,7 @@ function onbRecordText(){
       if(patchStale(d)) lines.push("    WARNING: not updated in "+patchAge(d)+" days");
     });
   }
-  return lines.join("\n");
+  return lines.concat(recTextEnd("on")).join("\n");
 }
 /* one row per item so the record can be sorted and filtered in Excel */
 function onbRows(){
@@ -2573,7 +2642,7 @@ function onbClick(e){
    and split over cells in column A, with the length and a checksum on the line above. Excel keeps hidden tabs and plain text cells
    when it opens and saves a workbook, and base64 has no spaces or symbols Excel could change, so the file still reopens after that.
    Opening checks the size, the zip, the checksum and every value, treats every value as text and never runs anything from the file. */
-const PF_APP = "Click by Click Access", PF_KIND = "person file", PF_FORMAT = 1, PF_VERSION = "2.7";
+const PF_APP = "Click by Click Access", PF_KIND = "person file", PF_FORMAT = 1, PF_VERSION = "2.8";
 const PF_MAX_BYTES = 5000000, PF_CHUNK = 30000, PF_SHEET = "Data";
 const PF_ACCEPT = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 let pfMsg = {on:null, off:null};      /* what the open box says: {text, warn, go} */
@@ -2686,6 +2755,8 @@ function pfCleanFromOnb(f){
 function pfReadMe(flow, who, saved){
   const on=flow==="on", rows=[[{bold:"About this file"}],
     ["This is the "+(on? "onboarding" : "offboarding")+" file for "+who+", saved from Click by Click Access."]];
+  if(orgOf(flow)) rows.push(["Prepared for "+orgOf(flow)]);
+  rows.push(["Record number: "+recNo(flow)]);
   if(on){ rows.push(["Onboarding date: "+fmtShort(state.onb.fileDate)]); rows.push(["Last updated: "+saved.toLocaleString("en-US")]); }
   else rows.push(["Saved: "+saved.toLocaleString("en-US")]);
   rows.push([""],[{bold:"How to open it"}],["1. Go to https://access.catherinejason.com"],
@@ -2694,7 +2765,8 @@ function pfReadMe(flow, who, saved){
     [""],[{bold:"Keep it safe"}],["Keep this file in a folder only managers can open. Don't email it outside your organization."],
     [""],[{bold:"What is in it"}],["Person: who they are, their dates, who completed and approved it, and admin access."],["Access: each system and whether they have it."],
     ["Devices: each device with all its details."],["Checklist: each step, its status, the date it was done and any note."],
-    [""],["The app reads its own copy from a hidden tab named Data, so changes typed into these tabs are not read back. To change something, open the file in the app, change it there and save it again. Please don't change the Data tab, or the app will turn the file away."]);
+    [""],["The app reads its own copy from a hidden tab named Data, so changes typed into these tabs are not read back. To change something, open the file in the app, change it there and save it again. Please don't change the Data tab, or the app will turn the file away."],
+    [""],[recCredit(isoDate(saved))],[REC_DISCLAIMER]);
   return rows;
 }
 function pfPersonRows(flow, saved){
@@ -2779,6 +2851,7 @@ function pfBuild(flow, saved){
 /* Chrome and Edge open a Save As window with the name filled in; other browsers download it */
 async function pfSave(flow){
   if(exView) return;
+  { const ri=recIntake(flow); if(typeof ri.org!=="string") ri.org=orgRaw(flow); recNo(flow); }
   const firstSave = flow==="on" && !state.onb.fileDate;
   if(firstSave) state.onb.fileDate = state.onb.intake.startDate || todayISO(); /* the onboarding date stays in the name from now on */
   const name=pfName(flow), saved=new Date();
@@ -2890,7 +2963,7 @@ function pfApply(mode, p){
   if(mode==="onb"){
     const r=pfOnbFrom(p);
     r.o.step="intake";
-    state.onb=r.o; state.inventory=r.inv;
+    state.onb=r.o; state.inventory=r.inv; recOrgSeen(r.o.intake.org);
     return {text:"Opened: "+pfOnbSummary(r.o, r.inv)+"."+pfLinkText(r.linked, r.added, "inv"), go:"Go to the checklist"};
   }
   if(mode==="offFromOnb"){
@@ -2909,7 +2982,8 @@ function pfApply(mode, p){
     const fromOnb=pfCleanFromOnb({role:oi.role, type:oi.type, dept:oi.dept, startDate:oi.startDate, doneBy:oi.doneBy, approvedBy:oi.approvedBy, admin:oi.admin, adminWhy:oi.adminWhy,
       systems:oi.systems, other:oi.other, fileDate:o.fileDate,
       devices:ents.map(e=>{ const fd=r.files.find(x=>r.map[x.id]===e.invId); return fd? {type:fd.type, model:fd.model, serial:fd.serial, handed:e.handed && e.at? isoDate(new Date(e.at)) : ""} : null; }).filter(Boolean)});
-    state.intake={role:oi.role, type:oi.type, departure:"planned", lastDay:"", doneBy:state.intake.doneBy, admin:oi.admin, systems:oi.systems.slice(), other:oi.other, regs:blankRegs(), dept:oi.dept};
+    state.intake={role:oi.role, type:oi.type, departure:"planned", lastDay:"", doneBy:state.intake.doneBy, admin:oi.admin, systems:oi.systems.slice(), other:oi.other, regs:blankRegs(), dept:oi.dept,
+      org: typeof oi.org==="string"? oi.org : state.intake.org, recNo:""}; recOrgSeen(oi.org);
     state.items={}; state.devices=devices; state.fromOnb=fromOnb; state.example=false; state.step="intake";
     return {text:"Opened: "+pfOnbSummary(o, r.inv)+". Their systems, admin answer, type, department and devices are filled in. Add their last day."+pfLinkText(linked, only, "person")};
   }
@@ -2924,11 +2998,12 @@ function pfApply(mode, p){
     const m=pfMatch(state.inventory, dv);
     if(m){ dv.invId=m.id; linked++; } else { delete dv.invId; only++; }
   });
-  state.intake=s.intake; state.items=s.items; state.devices=s.devices; state.fromOnb=pfCleanFromOnb(d.fromOnb); state.example=false; state.step="intake";
+  state.intake=s.intake; state.items=s.items; state.devices=s.devices; state.fromOnb=pfCleanFromOnb(d.fromOnb); state.example=false; state.step="intake"; recOrgSeen(s.intake.org);
   const i=s.intake, c=counts(activeTasks());
   return {text:"Opened: "+(i.role.trim()||"Departing person")+(i.dept.trim()? ", "+i.dept.trim() : "")+", "+(i.lastDay? "last day "+fmtShort(i.lastDay) : "no last day yet")+", "+
     c.done+" of "+c.total+" steps done, "+pfDevCount(s.devices.map(x=>x.type))+"."+pfLinkText(linked, only, "person"), go:"Go to the checklist"};
 }
+function recOrgSeen(v){ if(typeof v==="string" && v.trim()) state.lastOrg=v; }
 function pfOpen(mode){
   const flow = mode==="onb"? "on" : "off";
   const fi=document.createElement("input"); fi.type="file"; fi.accept=PF_ACCEPT;
@@ -3046,7 +3121,7 @@ window.addEventListener("beforeunload", e=>{
 /* Load example puts their work aside, untouched. Nothing done in the example is saved, and Exit example brings back exactly what they had. */
 function exampleState(base){
   const ex=example(); ex.onb=exampleOnb();
-  return Object.assign(ex, {learn:base.learn, tab: base.tab==="inv"? "off" : base.tab, invStep:base.invStep, inventory:JSON.parse(JSON.stringify(base.inventory))});
+  return Object.assign(ex, {learn:base.learn, tab: base.tab==="inv"? "off" : base.tab, invStep:base.invStep, inventory:JSON.parse(JSON.stringify(base.inventory)), lastOrg:base.lastOrg, invOrg:base.invOrg});
 }
 function clearViewBits(){ openMore.clear(); openInv.clear(); snOpen.clear(); learnOpen.clear(); learnClosed.clear(); importMsg=""; invMsg=""; onbMsg=""; invQuery=""; invFilter="all"; pfReset(); }
 function loadExample(){
@@ -3238,6 +3313,7 @@ view.addEventListener("input",e=>{
   const el=e.target; const i=state.intake;
   if(el.id==="invSearch"){ invQuery=el.value.slice(0,100); const t=document.getElementById("invTable"); if(t) t.innerHTML=invTableHTML(); return; }
   /* onboarding fields */
+  if(el.id==="org"||el.id==="onb_org"||el.id==="inv_org"){ setOrg(el.id==="org"? "off" : el.id==="onb_org"? "on" : "inv", el.value); return; }
   if(el.id==="pfName_on"){ state.onb.fileName=el.value.slice(0,160); save(); return; }
   if(el.id==="pfName_off"){ pfOffName=el.value.slice(0,160); return; }
   if(["onb_role","onb_doneBy","onb_startDate","onb_other","onb_adminWhy","onb_dept","onb_approvedBy"].indexOf(el.id)!==-1){
@@ -3403,7 +3479,7 @@ function startNew(){
   askModal({title:"Start over?", text:"This clears everything entered for "+personName(flow)+". Your inventory stays.",
     buttons:(TOP? [saveFirstButton(flow)] : []).concat([{label:"Clear it", kind:"warn", run:()=>{ clearPerson(flow); }}]), back:"#btnNew"});
 }
-function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb}; }
+function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb, lastOrg:state.lastOrg, invOrg:state.invOrg}; }
 btnNew.addEventListener("click",startNew);
 /* Load example opens a separate example view and never touches their work */
 document.getElementById("btnExample").addEventListener("click", loadExample);
