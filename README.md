@@ -12,6 +12,6 @@ It is free and open source under the MIT License. Everything runs in the browser
 
 **Built with:** HTML, CSS, JavaScript
 
-**Try it:** https://catherine-jason.github.io/click-by-click-access/
+**Try it:** https://access.catherinejason.com/
 
 Found a step that is wrong or missing? [Open an issue.](https://github.com/Catherine-Jason/click-by-click-access/issues)
