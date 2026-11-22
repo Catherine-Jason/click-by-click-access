@@ -8,6 +8,8 @@ The Onboarding tab builds a checklist for someone who is starting, with their ow
 
 The Inventory tab keeps track of every device your organization owns, shows which ones need updates, are missing or have a warranty ending soon, and updates itself when you check in a device from someone who is leaving.
 
+At the Record step you can save one Excel file for each person. Open it again later to finish their 30 day check, or open it when they leave to fill in their offboarding. Files open in your browser only and are never uploaded.
+
 It is free and open source under the MIT License. Everything runs in the browser. Nothing gets saved to a server, so download a backup now and then to keep your data safe.
 
 **Built with:** HTML, CSS, JavaScript

@@ -240,6 +240,18 @@ select.pickperson{width:auto; max-width:100%}
 .pickrow{display:flex; flex-wrap:wrap; gap:8px; align-items:center} .pickrow select{flex:1 1 16em; width:auto; min-width:0}
 #onbNewBox{border:1px dashed var(--line); border-radius:8px; padding:8px 10px}
 .ddcard p{margin:6px 0 0}
+/* v2.6: person files, the example view and the pop-up */
+.pfopen{border:1px dashed var(--line); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:10px; background:var(--bg)}
+.pfhead{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.pfchoice{display:flex; gap:6px 12px; align-items:center; flex-wrap:wrap} .pfchoice .btn{flex:none} .pfchoice small{color:var(--muted); font-size:12.5px; flex:1 1 18em}
+.pfnote{margin-top:-10px}
+.pfsave{display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--line); padding-top:14px}
+.pfname{display:flex; gap:6px 10px; align-items:center; flex-wrap:wrap; font-size:14px} .pfname b{overflow-wrap:anywhere} .pfname input{flex:1 1 20em; min-width:0}
+.banner.exview{margin-bottom:14px; border:1px solid var(--accent)}
+dialog#modal{border:1px solid var(--line); border-radius:14px; background:var(--surface); color:var(--ink); padding:0; width:min(30em, calc(100vw - 32px)); max-width:none}
+dialog#modal::backdrop{background:rgba(0,0,0,.6)}
+.modalbox{padding:20px; display:flex; flex-direction:column; gap:12px}
+.modalbox h2{margin:0} .modalbox p{margin:0} #modalMsg{color:var(--done)} #modalMsg:empty{display:none}
 
 @media (max-width:620px){
   nav.tabs button{font-size:13px; padding:10px 4px}
@@ -308,7 +320,7 @@ select.pickperson{width:auto; max-width:100%}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.5 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.6 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
@@ -1058,11 +1070,11 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;",
 
 function nextFriday(){const d=new Date(); const add=(5-d.getDay()+7)%7||7; return isoDate(addDays(d,add))}
 function blankRegs(){ return {hipaa:false, pci:false, ferpa:false, hold:false}; }
-function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], onb:exampleOnb(), intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs()}, items:{}, devices:[]} }
+function blank(){ return {step:"intake", example:false, learn:false, tab:"off", invStep:"all", inventory:[], onb:blankOnb(), intake:{role:"", type:"staff", departure:"planned", lastDay:"", doneBy:"", admin:false, systems:[], other:"", regs:blankRegs(), dept:""}, items:{}, devices:[], fromOnb:null, fileSig:""} }
 function example(){
   const s = blank(); s.example = true;
   s.intake = {role:"Volunteer events lead", type:"volunteer", departure:"planned", lastDay:nextFriday(), doneBy:"Office manager", admin:false,
-    systems:["email","cloud","social","sharedpw","laptop","personal","keys"], other:"Event signup form (Google Forms)", regs:blankRegs()};
+    systems:["email","cloud","social","sharedpw","laptop","personal","keys"], other:"Event signup form (Google Forms)", regs:blankRegs(), dept:"Events"};
   const lap = newDevice("laptop"); lap.model="Dell Latitude 5440"; lap.serial="Asset tag NP-0142"; lap.os="windows"; lap.enc="on";
   const tab = newDevice("tablet"); tab.id+="b"; tab.model="iPad (check in table at events)"; tab.serial="DMPXK2Q4LM"; tab.os="ios"; tab.enc="on";
   const ago = n => isoDate(addDays(new Date(), -n));
@@ -1118,9 +1130,11 @@ function normalizeState(s){
     tab: ["on","off","inv"].indexOf(s.tab)!==-1? s.tab : "off", invStep: ["all","add","reports"].indexOf(s.invStep)!==-1? s.invStep : "all",
     intake: {role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", departure: i.departure==="unplanned"? "unplanned" : "planned",
       lastDay: typeof i.lastDay==="string" && /^\d{4}-\d{2}-\d{2}$/.test(i.lastDay)? i.lastDay : "", doneBy:str(i.doneBy,200), admin: i.admin===true,
-      systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000), regs:r},
+      systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000), regs:r, dept:str(i.dept,200)},
     items: cleanItems(s.items), devices: cleanDevices(s.devices, false), inventory: cleanDevices(s.inventory, true),
-    onb: normalizeOnb(s.onb)
+    onb: normalizeOnb(s.onb),
+    /* v2.6: what they were given at onboarding, and the fingerprint of the last saved person file */
+    fromOnb: pfCleanFromOnb(s.fromOnb), fileSig: typeof s.fileSig==="string"? s.fileSig.slice(0,16) : ""
   };
   /* a device id must point to one device only */
   const invIds=new Set(out.inventory.map(d=>d.id));
@@ -1128,11 +1142,13 @@ function normalizeState(s){
   return out;
 }
 function load(){ try{ const raw=localStorage.getItem(KEY); if(raw) return normalizeState(JSON.parse(raw)); }catch(e){} return null }
+let exView = null; /* v2.6: while the example is on screen, the person's own work waits here untouched and nothing is saved */
 let saveFailed=false;
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); saveFailed=false; }catch(e){ saveFailed=true; } }
+function save(){ if(exView) return; try{ localStorage.setItem(KEY, JSON.stringify(state)); saveFailed=false; }catch(e){ saveFailed=true; } }
 
-let state = load() || example();
-let confirmNew = false;
+let state = load();
+/* first visit: their own empty work (the example is only ever a separate view, so nothing real is typed into it by mistake) */
+if(!state) state=blank();
 let importMsg = "";
 const openMore = new Set(); /* devices whose "More details" is open, kept across redraws */
 
@@ -1444,19 +1460,20 @@ function renderOnbCard(){
 
 /* ---------- views ---------- */
 function exampleBanner(){
-  return state.example ? '<div class="banner"><span><b>Example loaded.</b> This is a sample person so you can see how it works.</span><button class="btn" type="button" data-act="new">Start your own</button></div>' : "";
+  return state.example && !exView ? '<div class="banner"><span><b>Example loaded.</b> This is a sample person so you can see how it works.</span><button class="btn" type="button" data-act="new">Start your own</button></div>' : "";
 }
 
 function viewIntake(){
   const i = state.intake;
   const sys = SYSTEMS.map(s=>'<label for="sys_'+s.id+'"><input type="checkbox" id="sys_'+s.id+'" data-sys="'+s.id+'"'+(i.systems.indexOf(s.id)!==-1?" checked":"")+'><span>'+esc(s.label)+(s.hint?'<small>'+esc(s.hint)+'</small>':"")+'</span></label>').join("");
   const n = activeTasks().length;
-  return '<section class="panel">'+exampleBanner()+
+  return '<section class="panel">'+exampleBanner()+pfOpenBox("off")+
   '<div><h2>Who is leaving?</h2><p class="muted">Answer a few questions and the checklist builds itself with only the steps that apply.</p></div>'+
   '<div class="grid2">'+
     '<div class="field"><label for="role">Role or name</label><input type="text" id="role" placeholder="Example: Program assistant" value="'+esc(i.role)+'"><small>A role is enough if you would rather not save a name here.</small></div>'+
     '<div class="field"><label for="doneBy">Completed by</label><input type="text" id="doneBy" placeholder="Who is doing the offboarding" value="'+esc(i.doneBy)+'"></div>'+
   '</div>'+
+  '<div class="grid2"><div class="field"><label for="dept">Department</label><input type="text" id="dept" placeholder="Example: Programs" value="'+esc(i.dept||"")+'"></div></div>'+
   '<div class="grid2">'+
     '<div class="field"><span class="legend">They are a</span><div class="seg">'+
       ['staff','volunteer','board'].map(v=>'<label><input type="radio" name="type" value="'+v+'"'+(i.type===v?" checked":"")+'>'+({staff:"Staff member",volunteer:"Volunteer",board:"Board member"}[v])+'</label>').join("")+
@@ -1609,6 +1626,7 @@ function recordText(){
   lines.push("OFFBOARDING RECORD");
   lines.push("Person or role: "+personLabel());
   lines.push("Type: "+({staff:"Staff member",volunteer:"Volunteer",board:"Board member"}[i.type]));
+  if(i.dept) lines.push("Department: "+i.dept);
   lines.push("Departure: "+(i.departure==="unplanned"?"Unplanned":"Planned"));
   lines.push("Last day: "+fmt(parseDate(i.lastDay)));
   lines.push("Completed by: "+(i.doneBy||"Not entered"));
@@ -1685,6 +1703,7 @@ function viewRecord(){
   (regNames.length? '<p class="muted">Regulated data: '+esc(regNames.join(", "))+'.</p>' : "")+
   '<div class="recordhead">'+
     '<div class="kv"><span>Person or role</span><b>'+esc(personLabel())+'</b></div>'+
+    (i.dept? '<div class="kv"><span>Department</span><b>'+esc(i.dept)+'</b></div>' : '')+
     '<div class="kv"><span>Last day</span><b>'+esc(fmt(parseDate(i.lastDay)))+'</b></div>'+
     '<div class="kv"><span>Completed by</span><b>'+esc(i.doneBy||"Not entered")+'</b></div>'+
     '<div class="kv"><span>Done</span><b>'+c.done+' of '+c.total+'</b></div>'+
@@ -1698,13 +1717,14 @@ function viewRecord(){
     '<h3>Device details</h3><div class="devdetails">'+cards+'</div>'+
     '<p class="note">'+NOTE_DISPOSAL+'</p>'+((d.out||d.missing)? '<p class="note">'+NOTE_EQUIPMENT+'</p>' : '') : "")+
   '<p class="muted aligned-note">Steps are aligned with the frameworks shown, not a certification of compliance. Laws vary by state and by the type of data you hold.</p>'+
-  '<div class="rowbtns"><button class="btn primary" type="button" data-act="copy" id="btnCopy">Copy record</button>'+
+  pfSaveBox("off")+
+  '<div class="rowbtns"><button class="btn" type="button" data-act="copy" id="btnCopy">Copy record</button>'+
   (TOP? '<button class="btn" type="button" data-act="download">Download as text file</button>'+(state.devices.length?'<button class="btn" type="button" data-act="exportCSV">Download devices for Excel (.csv)</button><button class="btn" type="button" data-act="exportXLSX">Download devices for Excel (.xlsx)</button>':'')+'<button class="btn" type="button" data-act="print">Print</button>' : '')+
   '</div></section>';
 }
 
 /* ================= v2.1 (Access only): Onboarding placeholder, Inventory tab, backup ================= */
-let invQuery = "", invFilter = "all", invMsg = "", invAdded = "", restoreMsg = "", pendingRestore = null;
+let invQuery = "", invFilter = "all", invMsg = "", invAdded = "", restoreMsg = "";
 const openInv = new Set(); /* inventory rows whose details are open */
 const BACKUP_APP = "Click by Click Access";
 function normName(s){ return String(s||"").toLowerCase().replace(/\s+/g," ").trim(); }
@@ -1923,10 +1943,17 @@ function invClick(e){
   const a=t.closest("[data-act]"); if(!a) return false;
   const act=a.dataset.act;
   if(act==="invExample"){ state.inventory=state.inventory.concat(exampleInventory()); save(); redrawKeep(); return true; }
-  if(act==="invClearExample"){ removeInv(new Set(state.inventory.filter(d=>/^ex/.test(d.id)).map(d=>d.id))); save(); redrawKeep(); return true; }
+  if(act==="invClearExample"){
+    const ids=new Set(state.inventory.filter(d=>/^ex/.test(d.id)).map(d=>d.id)); if(!ids.size) return true;
+    askModal({title:"Remove the example devices?", text:"This removes "+pfCount(ids.size,"example device","example devices")+" from the inventory, with any changes made to them. Your own devices stay.",
+      buttons:[{label:"Remove them", kind:"warn", run:()=>{ removeInv(ids); save(); redrawKeep(); }}], focus:1});
+    return true;
+  }
   if(act==="invRemove"){
-    if(a.dataset.confirm!=="1"){ a.dataset.confirm="1"; a.textContent="Tap again to remove"; setTimeout(()=>{ if(a.isConnected){ a.dataset.confirm=""; a.textContent="Remove from inventory"; } },3000); return true; }
-    removeInv(new Set([a.dataset.dev])); save(); redrawKeep("#invSearch"); return true;
+    const d=state.inventory.find(x=>x.id===a.dataset.dev); if(!d) return true;
+    askModal({title:"Remove this device?", text:"This removes "+devName(d)+(d.serial? " ("+d.serial+")" : "")+" from the inventory, with all its details.",
+      buttons:[{label:"Remove it", kind:"warn", run:()=>{ removeInv(new Set([d.id])); save(); redrawKeep("#invSearch"); }}], focus:1, back:"#invSearch"});
+    return true;
   }
   if(act==="invAdd"){
     const val=id=>{ const el=document.getElementById(id); return el? el.value.trim() : ""; };
@@ -1973,11 +2000,9 @@ function invClick(e){
 
 /* ---------- backup and restore ---------- */
 function viewData(){
-  const p=pendingRestore;
   return '<section class="panel datapanel"><div><h2>Your data</h2><p class="muted">A backup is one file with everything: the offboarding checklist, its devices and the whole inventory.</p></div>'+
     '<div class="banner warn"><span><b>Your data is saved only in this browser on this device.</b> Clearing your browser data, using a private window, or switching browsers or computers loses it. Download a backup often.</span></div>'+
     (saveFailed? '<div class="banner warn"><span><b>This browser could not save your last change.</b> Its storage may be full or turned off. Download a backup now so you do not lose your work.</span></div>' : '')+
-    (p? '<div class="banner"><span><b>Restore this backup?</b> '+esc(p.summary)+' Restoring replaces everything in this browser now.</span><span class="rowbtns"><button class="btn primary" type="button" data-act="restoreYes">Restore</button><button class="btn" type="button" data-act="restoreNo">Cancel</button></span></div>' : '')+
     '<div class="rowbtns">'+(TOP? '<button class="btn" type="button" data-act="backup">Download backup</button>' : '')+'<button class="btn" type="button" data-act="restore">Restore backup</button></div>'+
     (restoreMsg? '<small role="status" id="restoreMsg">'+esc(restoreMsg)+'</small>' : '')+
     '<small class="muted">The backup file holds names, serial numbers and notes, so keep it somewhere safe, like your other staff records.</small></section>';
@@ -1996,33 +2021,33 @@ function readBackup(text){
     " with "+s.devices.length+" device"+(s.devices.length===1?"":"s")+", and onboarding for "+(s.onb.intake.role? '"'+s.onb.intake.role+'"' : "an unnamed person")+"."+when+(dropped? " "+dropped+" entr"+(dropped===1?"y":"ies")+" could not be read and will be left out." : "");
   return {state:s, summary:summary};
 }
+/* a backup is always their own work, even while the example is on screen */
+function downloadBackup(){ saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.6", saved:new Date().toISOString(), data:ownState()}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json"); }
+function restoreBackup(r){
+  const tab=state.tab; exView=null; state=r.state; state.tab=tab; clearViewBits();
+  save(); restoreMsg = saveFailed? "Restored for now, but this browser could not save it. Its storage may be full or turned off." : "Backup restored.";
+  render(); const m=document.getElementById("restoreMsg"); if(m) m.scrollIntoView({block:"center"});
+}
 const dataPanel=document.getElementById("dataPanel");
 dataPanel.addEventListener("click",e=>{
   const a=e.target.closest("[data-act]"); if(!a) return; const act=a.dataset.act;
-  if(act==="backup"){
-    saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.5", saved:new Date().toISOString(), data:state}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json");
-    restoreMsg="Backup downloaded."; renderData(); return;
-  }
+  if(act==="backup"){ downloadBackup(); restoreMsg="Backup downloaded."; renderData(); return; }
   if(act==="restore"){
     const fi=document.createElement("input"); fi.type="file"; fi.accept=".json,application/json";
     fi.addEventListener("change",()=>{
       const file=fi.files&&fi.files[0]; if(!file) return;
-      pendingRestore=null;
       if(file.size>20000000){ restoreMsg="That file is too big to be a backup from this app. Nothing was changed."; renderData(); return; }
       const rd=new FileReader();
-      rd.onload=()=>{ const r=readBackup(String(rd.result||"")); if(r.err){ restoreMsg=r.err; } else { pendingRestore=r; restoreMsg=""; } renderData();
-        const b=dataPanel.querySelector('[data-act="restoreYes"]'); if(b) b.focus(); };
+      rd.onload=()=>{
+        const r=readBackup(String(rd.result||"")); restoreMsg = r.err || ""; renderData(); if(r.err) return;
+        askModal({title:"Restore this backup?", text:r.summary+" Restoring replaces everything in this browser now, including the inventory.",
+          buttons:(TOP? [{label:"Download a backup first", kind:"primary", stay:true, run:()=>{ downloadBackup(); modalSay("Downloaded a backup of what you have now. You can restore when you're ready."); }}] : [])
+            .concat([{label:"Restore", kind:"warn", run:()=>restoreBackup(r)}]), back:'[data-act="restore"]'});
+      };
       rd.onerror=()=>{ restoreMsg="That file could not be read. Nothing was changed."; renderData(); };
       rd.readAsText(file);
     });
     fi.click(); return;
-  }
-  if(act==="restoreNo"){ pendingRestore=null; restoreMsg="Restore canceled. Nothing was changed."; renderData(); return; }
-  if(act==="restoreYes" && pendingRestore){
-    const tab=state.tab; state=pendingRestore.state; state.tab=tab; pendingRestore=null;
-    openMore.clear(); openInv.clear(); learnOpen.clear(); learnClosed.clear(); invQuery=""; invFilter="all"; invMsg=""; importMsg="";
-    save(); restoreMsg = saveFailed? "Restored for now, but this browser could not save it. Its storage may be full or turned off." : "Backup restored.";
-    render(); const m=document.getElementById("restoreMsg"); if(m) m.scrollIntoView({block:"center"});
   }
 });
 
@@ -2145,10 +2170,10 @@ const ON_STEPS = [["intake",'Intake<span class="lbl-long"> questions</span>'],["
 let onbMsg = "";
 
 function nextMonday(){ const d=new Date(); const add=(1-d.getDay()+7)%7||7; return isoDate(addDays(d,add)); }
-function blankOnb(){ return {step:"intake", example:false, intake:{role:"", type:"staff", startDate:"", doneBy:"", admin:false, adminWhy:"", systems:[], other:""}, items:{}, devices:[], sets:{}}; }
+function blankOnb(){ return {step:"intake", example:false, intake:{role:"", type:"staff", startDate:"", doneBy:"", admin:false, adminWhy:"", systems:[], other:"", dept:"", approvedBy:""}, items:{}, devices:[], sets:{}, fileDate:"", fileName:"", fileSig:""}; }
 function exampleOnb(){
   const o=blankOnb(); o.example=true;
-  o.intake={role:"Program assistant", type:"staff", startDate:nextMonday(), doneBy:"Office manager", admin:false, adminWhy:"", systems:["email","cloud","database","sharedpw","laptop","keys"], other:"Scheduling app"};
+  o.intake={role:"Program assistant", type:"staff", startDate:nextMonday(), doneBy:"Office manager", admin:false, adminWhy:"", systems:["email","cloud","database","sharedpw","laptop","keys"], other:"Scheduling app", dept:"Programs", approvedBy:"Executive director"};
   return o;
 }
 /* the same cleaning as the offboarding save: known fields only */
@@ -2176,8 +2201,11 @@ function normalizeOnb(o){
   });
   return {step: ["intake","list","record"].indexOf(o.step)!==-1? o.step : "intake", example: o.example===true,
     intake:{role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", startDate:iso(i.startDate), doneBy:str(i.doneBy,200),
-      admin: i.admin===true, adminWhy:str(i.adminWhy,300), systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000)},
-    items: cleanItems(o.items), devices: devices, sets: cleanSets(o.sets)};
+      admin: i.admin===true, adminWhy:str(i.adminWhy,300), systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000),
+      dept:str(i.dept,200), approvedBy:str(i.approvedBy,200)},
+    items: cleanItems(o.items), devices: devices, sets: cleanSets(o.sets),
+    /* v2.6: the date in the person file's name, a name they typed, and the fingerprint of the last saved file */
+    fileDate:iso(o.fileDate), fileName:str(o.fileName,160), fileSig:str(o.fileSig,16)};
 }
 /* what each checked device step changed in the inventory, so unchecking it can put it back (v2.2 saves have none) */
 function cleanSets(src){
@@ -2290,16 +2318,20 @@ function onbUndoSets(id){
 
 /* ---------- onboarding views ---------- */
 function onbBanner(){
-  return state.onb.example ? '<div class="banner"><span><b>Example loaded.</b> This is a sample person so you can see how it works.</span><button class="btn" type="button" data-act="onbNew">Start your own</button></div>' : "";
+  return state.onb.example && !exView ? '<div class="banner"><span><b>Example loaded.</b> This is a sample person so you can see how it works.</span><button class="btn" type="button" data-act="onbNew">Start your own</button></div>' : "";
 }
 function viewOnbIntake(){
   const i=state.onb.intake, n=onbTasks().length;
   const sys=SYSTEMS.map(s=>'<label for="onbsys_'+s.id+'"><input type="checkbox" id="onbsys_'+s.id+'" data-onbsys="'+s.id+'"'+(has(i,s.id)?" checked":"")+'><span>'+esc(s.label)+(s.hint?'<small>'+esc(s.hint)+'</small>':"")+'</span></label>').join("");
-  return '<section class="panel">'+onbBanner()+
+  return '<section class="panel">'+onbBanner()+pfOpenBox("on")+
   '<div><h2>Who is starting?</h2><p class="muted">Answer a few questions and the checklist builds itself with only the steps that apply.</p></div>'+
   '<div class="grid2">'+
     '<div class="field"><label for="onb_role">Role or name</label><input type="text" id="onb_role" placeholder="Example: Program assistant" value="'+esc(i.role)+'"><small>Devices you hand out are assigned to this name in the inventory.</small></div>'+
     '<div class="field"><label for="onb_doneBy">Completed by</label><input type="text" id="onb_doneBy" placeholder="Who is doing the onboarding" value="'+esc(i.doneBy)+'"></div>'+
+  '</div>'+
+  '<div class="grid2">'+
+    '<div class="field"><label for="onb_dept">Department</label><input type="text" id="onb_dept" placeholder="Example: Programs" value="'+esc(i.dept)+'"></div>'+
+    '<div class="field"><label for="onb_approvedBy">Approved by</label><input type="text" id="onb_approvedBy" placeholder="Who approved their access" value="'+esc(i.approvedBy)+'"></div>'+
   '</div>'+
   '<div class="grid2">'+
     '<div class="field"><span class="legend">They are a</span><div class="seg">'+
@@ -2413,6 +2445,8 @@ function viewOnbRecord(){
     : '<div class="banner"><span><b>All steps are closed.</b> Access for this person is set up.</span></div>')+
   '<div class="recordhead">'+
     '<div class="kv"><span>Person or role</span><b>'+esc(onbPerson())+'</b></div>'+
+    (i.dept? '<div class="kv"><span>Department</span><b>'+esc(i.dept)+'</b></div>' : '')+
+    (i.approvedBy? '<div class="kv"><span>Approved by</span><b>'+esc(i.approvedBy)+'</b></div>' : '')+
     '<div class="kv"><span>Start date</span><b>'+esc(fmt(parseDate(i.startDate)))+'</b></div>'+
     '<div class="kv"><span>Completed by</span><b>'+esc(i.doneBy||"Not entered")+'</b></div>'+
     '<div class="kv"><span>Done</span><b>'+c.done+' of '+c.total+'</b></div>'+
@@ -2424,7 +2458,8 @@ function viewOnbRecord(){
   '<div class="tablewrap"><table><thead><tr><th>When</th><th>Step</th><th>Status</th><th>Note</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
   (devs.length? '<h3>Devices</h3><div class="tablewrap"><table class="wide"><thead><tr><th>Device</th><th>OS</th><th>Encryption</th><th>MDM</th><th>Antivirus</th><th>Last updated</th><th>Assigned by</th><th>Date assigned</th><th>Hand out</th></tr></thead><tbody>'+devRows+'</tbody></table></div>' : '')+
   '<p class="muted aligned-note">Steps are aligned with the frameworks shown, not a certification of compliance.</p>'+
-  '<div class="rowbtns"><button class="btn primary" type="button" data-act="onbCopy">Copy record</button>'+
+  pfSaveBox("on")+
+  '<div class="rowbtns"><button class="btn" type="button" data-act="onbCopy">Copy record</button>'+
   (TOP? '<button class="btn" type="button" data-act="onbDownload">Download as text file</button><button class="btn" type="button" data-act="onbCSV">Download for Excel (.csv)</button><button class="btn" type="button" data-act="onbXLSX">Download for Excel (.xlsx)</button><button class="btn" type="button" data-act="print">Print</button>' : '')+
   '</div></section>';
 }
@@ -2433,6 +2468,8 @@ function onbRecordText(){
   lines.push("ACCESS GRANTED RECORD");
   lines.push("Person or role: "+onbPerson());
   lines.push("Type: "+typeLabel(i.type));
+  if(i.dept) lines.push("Department: "+i.dept);
+  if(i.approvedBy) lines.push("Approved by: "+i.approvedBy);
   lines.push("Start date: "+fmt(parseDate(i.startDate)));
   lines.push("Completed by: "+(i.doneBy||"Not entered"));
   lines.push("Record created: "+new Date().toLocaleString("en-US"));
@@ -2470,7 +2507,7 @@ function onbRows(){
   return rows;
 }
 function onbCSV(){ return csvFrom(onbRows()); }
-function goOnb(step){ onbMsg=""; state.onb.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
+function goOnb(step){ onbMsg=""; pfReset(); state.onb.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
 function updateOnbCount(){ const el=document.getElementById("onbBuildCount"); if(el) el.innerHTML='This builds a checklist of <b>'+onbTasks().length+'</b> steps.'; }
 /* clicks on the Onboarding tab; returns true when handled */
 function onbClick(e){
@@ -2509,6 +2546,573 @@ function onbClick(e){
   o.items[id]=s; save(); redrawKeep('.item[data-id="'+id+'"] [data-act="'+act+'"]');
   return true;
 }
+/* ================= v2.6 (Access only): Person files ================= */
+/* One .xlsx per person, saved at the Record step and opened again above the intake.
+   The readable tabs (Read me, Person, Access, Devices, Checklist) are for people. The app never reads them back.
+   A hidden tab named Data holds everything the app needs to reopen the file exactly: the details as JSON, turned into base64 text
+   and split over cells in column A, with the length and a checksum on the line above. Excel keeps hidden tabs and plain text cells
+   when it opens and saves a workbook, and base64 has no spaces or symbols Excel could change, so the file still reopens after that.
+   Opening checks the size, the zip, the checksum and every value, treats every value as text and never runs anything from the file. */
+const PF_APP = "Click by Click Access", PF_KIND = "person file", PF_FORMAT = 1, PF_VERSION = "2.6";
+const PF_MAX_BYTES = 5000000, PF_CHUNK = 30000, PF_SHEET = "Data";
+const PF_ACCEPT = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+let pfMsg = {on:null, off:null};      /* what the open box says: {text, warn, go} */
+let pfSaveMsg = {on:"", off:""};      /* what the Record step says after saving */
+let pfNameEdit = {on:false, off:false}, pfOffName = "";
+function pfReset(){ pfMsg={on:null, off:null}; pfSaveMsg={on:"", off:""}; pfNameEdit={on:false, off:false}; }
+
+/* ---------- names ---------- */
+/* characters Windows and Macs do not allow in file names are removed */
+function pfClean(s){ return String(s||"").replace(/[\u0000-\u001f\u007f<>:"\/\\|?*]/g," ").replace(/\s+/g," ").trim().replace(/[. ]+$/,"").slice(0,150).trim(); }
+function pfWho(flow){ return (flow==="on"? state.onb.intake.role : state.intake.role).replace(/\s+/g," ").trim(); }
+const PF_ROLE_WORDS = /\b(assistant|manager|lead|leader|director|coordinator|member|volunteer|officer|intern|treasurer|secretary|chair|president|staff|admin|administrator|specialist|associate|advocate|analyst|worker|aide|clerk|receptionist|accountant|bookkeeper|teacher|tutor|counselor|organizer|fellow|trustee|head|chief|supervisor|technician|developer|designer|writer|editor|board|team|program|programs|events?|office|front|desk)\b/i;
+/* "Ana Lopez" gives Ana; a role like "Program assistant" stays whole */
+function pfFirst(flow){
+  const r=pfWho(flow); if(!r) return "";
+  const w=r.split(" ");
+  const nameLike = w.length>=2 && w.length<=4 && w.every(x=>/^\p{Lu}[\p{L}'.-]*$/u.test(x)) && !PF_ROLE_WORDS.test(r);
+  const out = nameLike? w[0] : r;
+  return out.length>40? out.slice(0,38).trim()+"…" : out;
+}
+function pfPoss(s){ return /s$/i.test(s)? s+"'" : s+"'s"; }
+function pfFileDate(flow){ return flow==="on"? (state.onb.fileDate || state.onb.intake.startDate || todayISO()) : todayISO(); }
+function pfDefaultName(flow){
+  const d=pfFileDate(flow), who=pfClean(pfWho(flow)) || (flow==="on"? "New person" : "Departing person");
+  return d.slice(0,4)+" "+(flow==="on"? "Onboarding" : "Offboarding")+" "+who+" "+d+".xlsx";
+}
+function pfName(flow){ const n=pfClean(String((flow==="on"? state.onb.fileName : pfOffName)||"").replace(/\.xlsx$/i,"")); return n? n+".xlsx" : pfDefaultName(flow); }
+
+/* ---------- the workbook ---------- */
+/* like xlsxFile, with more than one tab. A cell can also be {bold:"text"}. wrap: long text wraps inside the cell. hidden: the tab is hidden. */
+function xlsxBook(sheets){
+  const NS='xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const HEAD='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n', REL='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const defs=[], parts=[];
+  sheets.forEach((sh,si)=>{
+    const rows=sh.rows, ncol=Math.max(1, ...rows.map(r=>r.length)), widths=new Array(ncol).fill(0), max=sh.maxWidth||XL_MAX_WIDTH;
+    const fit=(ci,n)=>{ widths[ci]=Math.max(widths[ci], n); };
+    const data=rows.map((r,ri)=>{
+      let cells="";
+      r.forEach((v,ci)=>{
+        const ref=colName(ci)+(ri+1); let bold = ri===0 && sh.header!==false;
+        if(v && typeof v==="object" && "bold" in v){ bold=true; v=v.bold; }
+        if(v && typeof v==="object"){
+          const n = v.date? xlDateSerial(v.date) : xlTimeSerial(v.at);
+          if(n!==null){ cells+='<c r="'+ref+'" s="'+(v.date? 2 : 3)+'"><v>'+n+'</v></c>'; fit(ci, v.date? 10 : 16); return; }
+          v=cellText(v);
+        }
+        if(ri>0 && typeof v==="number" && isFinite(v)){ cells+='<c r="'+ref+'"><v>'+v+'</v></c>'; fit(ci, String(v).length); return; }
+        const s=String(v==null? "" : v).replace(/\r\n?/g,"\n").slice(0,32767); if(s==="") return;
+        const style = bold? ' s="1"' : sh.wrap? ' s="4"' : '';
+        cells+='<c r="'+ref+'" t="inlineStr"'+style+'><is><t xml:space="preserve">'+xmlEsc(s)+'</t></is></c>';
+        fit(ci, Math.max(...s.split(/\n/).map(x=>x.length))*(bold? 1.15 : 1));
+      });
+      return '<row r="'+(ri+1)+'">'+cells+'</row>';
+    }).join("");
+    const range='A1:'+colName(ncol-1)+Math.max(1,rows.length);
+    const cols=widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+Math.min(max, Math.max(8, Math.ceil(w)+2))+'" customWidth="1"/>').join("");
+    const views = sh.hidden? '' : '<sheetViews><sheetView'+(si===0? ' tabSelected="1"' : '')+' workbookViewId="0">'+
+      (sh.freeze? '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/>' : '')+'</sheetView></sheetViews>';
+    const name=String(sh.name).replace(/[\[\]:*?\/\\]/g," ").slice(0,31);
+    if(sh.filter) defs.push('<definedName name="_xlnm._FilterDatabase" localSheetId="'+si+'" hidden="1">'+xmlEsc("'"+name.replace(/'/g,"''")+"'!"+range.replace(/([A-Z]+)(\d+)/g,"$$$1$$$2"))+'</definedName>');
+    parts.push({name:name, hidden:sh.hidden, xml:HEAD+'<worksheet '+NS+'><dimension ref="'+range+'"/>'+views+
+      '<sheetFormatPr defaultRowHeight="15"/><cols>'+cols+'</cols><sheetData>'+data+'</sheetData>'+
+      (sh.filter? '<autoFilter ref="'+range+'"/>' : '')+'<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>'});
+  });
+  const book=HEAD+'<workbook '+NS+'><bookViews><workbookView activeTab="0"/></bookViews><sheets>'+
+    parts.map((p,i)=>'<sheet name="'+xmlEsc(p.name)+'" sheetId="'+(i+1)+'"'+(p.hidden? ' state="veryHidden"' : '')+' r:id="rId'+(i+1)+'"/>').join("")+'</sheets>'+
+    (defs.length? '<definedNames>'+defs.join("")+'</definedNames>' : '')+'</workbook>';
+  const font=b=>'<font>'+(b? '<b/>' : '')+'<sz val="11"/><name val="Calibri"/><family val="2"/></font>';
+  const xf=(fmt,fontId,extra,inner)=>'<xf numFmtId="'+fmt+'" fontId="'+fontId+'" fillId="0" borderId="0" xfId="0"'+(extra||'')+(inner? '>'+inner+'</xf>' : '/>');
+  const styles=HEAD+'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<fonts count="2">'+font(false)+font(true)+'</fonts>'+
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'+
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+    '<cellXfs count="5">'+xf(0,0)+xf(0,1,' applyFont="1"')+xf(14,0,' applyNumberFormat="1"')+xf(22,0,' applyNumberFormat="1"')+
+      xf(0,0,' applyAlignment="1"','<alignment vertical="top" wrapText="1"/>')+'</cellXfs>'+
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  return zipStore([
+    ["[Content_Types].xml", HEAD+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'+
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+      parts.map((p,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("")+
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ["_rels/.rels", HEAD+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="'+REL+'/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ["xl/workbook.xml", book],
+    ["xl/_rels/workbook.xml.rels", HEAD+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      parts.map((p,i)=>'<Relationship Id="rId'+(i+1)+'" Type="'+REL+'/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join("")+
+      '<Relationship Id="rId'+(parts.length+1)+'" Type="'+REL+'/styles" Target="styles.xml"/></Relationships>']
+  ].concat(parts.map((p,i)=>["xl/worksheets/sheet"+(i+1)+".xml", p.xml]), [["xl/styles.xml", styles]]));
+}
+
+/* ---------- what goes in the file ---------- */
+const pfYN = b => b? "Yes" : "No";
+function pfSystemsOf(i){ return SYSTEMS.filter(s=>has(i,s.id)).map(s=>s.label).concat((i.other||"").split(/[,\n;]/).map(x=>x.trim()).filter(Boolean)); }
+function pfOtherList(i){ return (i.other||"").split(/[,\n;]/).map(x=>x.trim()).filter(Boolean); }
+const PF_PLURAL = {laptop:["laptop","laptops"], tablet:["tablet","tablets"], phone:["phone","phones"], hotspot:["hotspot","hotspots"], accessory:["accessory","accessories"], other:["other device","other devices"]};
+function pfDevCount(types){
+  if(!types.length) return "no devices";
+  const n={}; types.forEach(t=>{ n[t]=(n[t]||0)+1; });
+  return Object.keys(PF_PLURAL).filter(t=>n[t]).map(t=>n[t]+" "+PF_PLURAL[t][n[t]===1? 0 : 1]).join(", ");
+}
+function pfCount(n, one, many){ return n+" "+(n===1? one : many); }
+/* what they were given at onboarding, kept on the offboarding so its file tells the whole story */
+function pfCleanFromOnb(f){
+  if(!f || typeof f!=="object" || Array.isArray(f)) return null;
+  const str=(v,n)=> typeof v==="string"? v.slice(0,n) : "", iso=v=> typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v)? v : "";
+  return {role:str(f.role,200), type: ["staff","volunteer","board"].indexOf(f.type)!==-1? f.type : "staff", dept:str(f.dept,200), startDate:iso(f.startDate),
+    doneBy:str(f.doneBy,200), approvedBy:str(f.approvedBy,200), admin:f.admin===true, adminWhy:str(f.adminWhy,300),
+    systems: Array.isArray(f.systems)? SYSTEMS.map(x=>x.id).filter(id=>f.systems.indexOf(id)!==-1) : [], other:str(f.other,1000), fileDate:iso(f.fileDate),
+    devices: (Array.isArray(f.devices)? f.devices : []).slice(0,100).filter(d=>d && typeof d==="object" && !Array.isArray(d)).map(d=>({
+      type: DEVICE_TYPES.some(t=>t.id===d.type)? d.type : "other", model:str(d.model,120), serial:str(d.serial,80), handed:iso(d.handed)}))};
+}
+function pfReadMe(flow, who, saved){
+  const on=flow==="on", rows=[[{bold:"About this file"}],
+    ["This is the "+(on? "onboarding" : "offboarding")+" file for "+who+", saved from Click by Click Access."]];
+  if(on){ rows.push(["Onboarding date: "+fmtShort(state.onb.fileDate)]); rows.push(["Last updated: "+saved.toLocaleString("en-US")]); }
+  else rows.push(["Saved: "+saved.toLocaleString("en-US")]);
+  rows.push([""],[{bold:"How to open it"}],["1. Go to https://access.catherinejason.com"],
+    ["2. On the "+(on? "Onboarding" : "Offboarding")+" tab, at the top of the intake, choose "+(on? "Open their onboarding file." : "Continue an offboarding.")+(on? " To start their offboarding, choose Open their onboarding file on the Offboarding tab." : "")],
+    ["3. Pick this file. It opens in your browser only. Nothing is uploaded."],
+    [""],[{bold:"Keep it safe"}],["Keep this file in a folder only managers can open. Don't email it outside your organization."],
+    [""],[{bold:"What is in it"}],["Person: who they are, their dates, who completed and approved it, and admin access."],["Access: each system and whether they have it."],
+    ["Devices: each device with all its details."],["Checklist: each step, its status, the date it was done and any note."],
+    [""],["The app reads its own copy from a hidden tab named Data, so changes typed into these tabs are not read back. To change something, open the file in the app, change it there and save it again. Please don't change the Data tab, or the app will turn the file away."]);
+  return rows;
+}
+function pfPersonRows(flow, saved){
+  const rows=[["Detail","Value"]];
+  if(flow==="on"){
+    const i=state.onb.intake, c=onbCounts(onbTasks());
+    rows.push(["Name or role", onbPerson()],["Type", typeLabel(i.type)],["Department", i.dept||"Not entered"],["Start date", i.startDate? xDate(i.startDate) : "Not set"],
+      ["Last day","Not set"],["Completed by", i.doneBy||"Not entered"],["Approved by", i.approvedBy||"Not entered"],
+      ["Admin access", i.admin? "Yes, with a separate admin account" : "No"],["Why they need admin access", i.admin? (i.adminWhy.trim()||"Not entered") : "Not needed"],
+      ["Checklist", c.done+" of "+c.total+" steps done, "+c.na+" not needed, "+c.open+" open"],
+      ["Onboarding date", xDate(state.onb.fileDate)],["Last updated", xTime(saved.getTime())]);
+    return rows;
+  }
+  const i=state.intake, f=state.fromOnb, c=counts(activeTasks()), regs=REGS.filter(r=>r.id!=="hold" && hasReg(i,r.id)).map(r=>r.label);
+  const fromNote = f? "" : "No onboarding file was opened";
+  rows.push(["Name or role", personLabel()],["Type", typeLabel(i.type)],["Department", i.dept||"Not entered"],
+    ["Start date", f && f.startDate? xDate(f.startDate) : (fromNote||"Not set")],["Last day", i.lastDay? xDate(i.lastDay) : "Not set"],
+    ["How they are leaving", i.departure==="unplanned"? "Unplanned or let go" : "Planned"],["Completed by", i.doneBy||"Not entered"],
+    ["Approved by (onboarding)", f? (f.approvedBy||"Not entered") : fromNote],
+    ["Admin access", i.admin? "Yes" : "No"],["Why they had admin access (onboarding)", f? (f.admin? (f.adminWhy.trim()||"Not entered") : "Not given at onboarding") : fromNote],
+    ["Regulated data", regs.length? regs.join(", ") : "None picked"],["Legal hold", hasReg(i,"hold")? "Yes. Every wipe and delete step is paused." : "No"],
+    ["Checklist", c.done+" of "+c.total+" steps done, "+c.na+" not needed, "+c.open+" open"+(c.paused? ", "+c.paused+" paused" : "")],
+    ["Saved", xTime(saved.getTime())],[""],[{bold:"From their onboarding file"}]);
+  if(!f){ rows.push(["Onboarding","No onboarding file was opened for this offboarding."]); return rows; }
+  rows.push(["Onboarded as", f.role||"Not entered"],["Department at start", f.dept||"Not entered"],["Start date", f.startDate? xDate(f.startDate) : "Not set"],
+    ["Onboarded by", f.doneBy||"Not entered"],["Approved by", f.approvedBy||"Not entered"],
+    ["Admin access at start", f.admin? "Yes, with a separate admin account. Why: "+(f.adminWhy.trim()||"not entered") : "No"],
+    ["Systems given", pfSystemsOf(f).join(", ")||"None"],
+    ["Devices given", f.devices.length? f.devices.map(d=>devTypeLabel(d.type)+(d.model? " "+d.model : "")+(d.serial? " ("+d.serial+")" : "")).join(", ") : "None"]);
+  return rows;
+}
+function pfAccessRows(flow){
+  if(flow==="on"){
+    const i=state.onb.intake;
+    return [["System","Has access"]].concat(SYSTEMS.map(s=>[s.label, pfYN(has(i,s.id))]), pfOtherList(i).map(o=>[o+" (other system)","Yes"]));
+  }
+  const i=state.intake, f=state.fromOnb;
+  if(!f) return [["System","Has access"]].concat(SYSTEMS.map(s=>[s.label, pfYN(has(i,s.id))]), pfOtherList(i).map(o=>[o+" (other system)","Yes"]));
+  const others=pfOtherList(i), fo=pfOtherList(f), same=(a,b)=>a.toLowerCase()===b.toLowerCase();
+  return [["System","Has access","Given at onboarding"]].concat(SYSTEMS.map(s=>[s.label, pfYN(has(i,s.id)), pfYN(has(f,s.id))]),
+    others.map(o=>[o+" (other system)","Yes", pfYN(fo.some(x=>same(x,o)))]), fo.filter(o=>!others.some(x=>same(x,o))).map(o=>[o+" (other system)","No","Yes"]));
+}
+function pfDeviceRows(flow){
+  if(flow==="off") return deviceRows();
+  return [csvHeader().concat(["Hand out","Handed out on","In the inventory as"])].concat(onbDevs().map(({e,d})=>{
+    const c=csvDeviceCells(d);
+    if(!e.handed){ const h=csvHeader(); c[h.indexOf("Assigned by")]=e.assignedBy; c[h.indexOf("Date assigned")]=xDate(e.dateAssigned); }
+    return c.concat([e.handed? "Handed out" : "Not handed out", xTime(e.at), invStatusLabel(d.invStatus)]);
+  }));
+}
+function pfChecklistRows(flow){
+  const rows=[["When","Step","Status","Date done","Note"]];
+  if(flow==="on") onbTasks().forEach(t=>{ const s=onbItemState(t.id); rows.push([onbPhaseInfo(t.ph).label, t.title, s.status==="done"? "Done" : s.status==="na"? "Not needed" : "Open", xTime(s.at), s.note]); });
+  else activeTasks().forEach(t=>{ const s=itemState(t.id); rows.push([phaseInfo(t.ph).label, t.title, t.paused? "Paused: legal hold" : s.status==="done"? "Done" : s.status==="na"? "Not needed" : "Open", t.paused? "" : xTime(s.at), s.note]); });
+  return rows;
+}
+/* everything the app needs to reopen it */
+function pfPayload(flow, saved){
+  const copy=o=>JSON.parse(JSON.stringify(o));
+  const head={app:PF_APP, kind:PF_KIND, format:PF_FORMAT, version:PF_VERSION, flow: flow==="on"? "onboarding" : "offboarding", saved:saved.toISOString()};
+  if(flow==="on") return Object.assign(head, {data:{onb:copy(state.onb), devices:onbDevs().map(x=>copy(x.d))}});
+  return Object.assign(head, {data:{intake:copy(state.intake), items:copy(state.items), devices:copy(state.devices), fromOnb:copy(state.fromOnb)}});
+}
+function pfB64(u8){ let s=""; for(let i=0;i<u8.length;i+=8192) s+=String.fromCharCode.apply(null, u8.subarray(i,i+8192)); return btoa(s); }
+function pfDataRows(p){
+  const u8=new TextEncoder().encode(JSON.stringify(p)), b=pfB64(u8), rows=[["Click by Click Access reads this tab to reopen the file. Please don't change it."],
+    ["format "+PF_FORMAT+" length "+u8.length+" crc "+crc32(u8).toString(16)+" parts "+Math.ceil(b.length/PF_CHUNK)]];
+  for(let i=0;i<b.length;i+=PF_CHUNK) rows.push([b.slice(i,i+PF_CHUNK)]);
+  return rows;
+}
+function pfBuild(flow, saved){
+  const who = flow==="on"? onbPerson() : personLabel();
+  return xlsxBook([
+    {name:"Read me", rows:pfReadMe(flow, who, saved), header:false, maxWidth:100},
+    {name:"Person", rows:pfPersonRows(flow, saved), wrap:true, maxWidth:70, freeze:true},
+    {name:"Access", rows:pfAccessRows(flow), freeze:true, filter:true},
+    {name:"Devices", rows:pfDeviceRows(flow), freeze:true, filter:true},
+    {name:"Checklist", rows:pfChecklistRows(flow), wrap:true, maxWidth:70, freeze:true, filter:true},
+    {name:PF_SHEET, rows:pfDataRows(pfPayload(flow, saved)), header:false, hidden:true}
+  ]);
+}
+/* Chrome and Edge open a Save As window with the name filled in; other browsers download it */
+async function pfSave(flow){
+  if(exView) return;
+  const firstSave = flow==="on" && !state.onb.fileDate;
+  if(firstSave) state.onb.fileDate = state.onb.intake.startDate || todayISO(); /* the onboarding date stays in the name from now on */
+  const name=pfName(flow), saved=new Date();
+  let bytes;
+  try{ bytes=pfBuild(flow, saved); }catch(err){ if(firstSave) state.onb.fileDate=""; pfSaveMsg[flow]="Could not make the file. Nothing was saved."; return; }
+  if(TOP && typeof window.showSaveFilePicker==="function"){
+    try{
+      const h=await window.showSaveFilePicker({suggestedName:name, types:[{description:"Excel workbook", accept:{[XLSX_TYPE]:[".xlsx"]}}]});
+      const w=await h.createWritable(); await w.write(new Blob([bytes],{type:XLSX_TYPE})); await w.close();
+      pfSaveMsg[flow]="Saved "+(h.name||name)+"."; pfMarkSaved(flow);
+    }catch(err){
+      if(err && err.name==="AbortError"){ if(firstSave) state.onb.fileDate=""; pfSaveMsg[flow]="Not saved. The Save As window was closed."; return; }
+      saveFile(bytes, name, XLSX_TYPE); pfSaveMsg[flow]="Downloaded "+name+". Check your Downloads folder."; pfMarkSaved(flow);
+    }
+  } else { saveFile(bytes, name, XLSX_TYPE); pfSaveMsg[flow]="Downloaded "+name+". Check your Downloads folder."; pfMarkSaved(flow); }
+  save();
+}
+
+/* ---------- opening a file ---------- */
+const PF_ERR = {
+  big:"This file is too big to be a person file from Click by Click Access. Nothing was changed.",
+  notours:"This isn't a file from Click by Click Access. Pick the .xlsx file you saved at the Record step. Nothing was changed.",
+  broken:"This file is damaged and can't be opened. Try another copy. Nothing was changed.",
+  tampered:"This file was changed outside the app or is damaged, so it can't be opened safely. Open the copy you saved from Click by Click Access. Nothing was changed.",
+  newer:"This file was saved by a newer version of Click by Click Access. Reload the page and try again. Nothing was changed.",
+  read:"Could not read that file. Try again. Nothing was changed."
+};
+function pfFail(code){ const e=new Error(code); e.pf=code; return e; }
+/* the hidden Data tab, back to the saved details; anything that does not check out is turned away */
+async function pfReadData(u8){
+  if(!(u8[0]===0x50 && u8[1]===0x4B)) throw pfFail("notours");
+  let z; try{ z=unzipIndex(u8); }catch(e){ throw pfFail("broken"); }
+  const budget={left:XLSX_MAX_UNZIPPED};
+  const get=async name=>{ if(!Object.prototype.hasOwnProperty.call(z,name)) return null;
+    try{ return xmlDoc(await unzipText(u8, z[name], budget)); }catch(e){ throw pfFail(e && e.message==="too big"? "big" : "broken"); } };
+  const book=await get("xl/workbook.xml"); if(!book) throw pfFail("notours");
+  const sh=xmlTags(book,"sheet").find(s=>s.getAttribute("name")===PF_SHEET); if(!sh) throw pfFail("notours");
+  const rels=await get("xl/_rels/workbook.xml.rels"); if(!rels) throw pfFail("broken");
+  const id=sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id");
+  const r=xmlTags(rels,"Relationship").find(x=>x.getAttribute("Id")===id), t=r? r.getAttribute("Target")||"" : "";
+  if(!t) throw pfFail("broken");
+  const path = t.charAt(0)==="/"? t.slice(1) : "xl/"+t.replace(/^\.\//,"");
+  const ss=await get("xl/sharedStrings.xml"), strings=ss? xmlTags(ss,"si").map(runText) : [];
+  const sheet=await get(path); if(!sheet) throw pfFail("broken");
+  /* column A, in row order */
+  const col=[];
+  xmlTags(sheet,"row").forEach(rw=>{
+    const rn=parseInt(rw.getAttribute("r"),10);
+    xmlKids(rw,"c").forEach(c=>{
+      const m=/^([A-Z]+)(\d+)$/.exec(c.getAttribute("r")||""); if(!m || m[1]!=="A") return;
+      const ty=c.getAttribute("t")||"n", vEl=xmlKids(c,"v")[0], v=vEl? vEl.textContent : "", is=xmlKids(c,"is")[0];
+      col[(rn||+m[2])-1] = ty==="s"? (strings[+v]||"") : ty==="inlineStr"? (is? runText(is) : "") : v;
+    });
+  });
+  const hm=/^format (\d+) length (\d+) crc ([0-9a-f]{1,8}) parts (\d+)$/.exec((col[1]||"").trim());
+  if(!hm) throw pfFail(/^Click by Click Access/.test(col[0]||"")? "tampered" : "notours");
+  if(+hm[1]>PF_FORMAT) throw pfFail("newer");
+  const n=+hm[4], chunks=col.slice(2);
+  if(!n || chunks.length!==n || chunks.some(c=>typeof c!=="string" || !/^[A-Za-z0-9+\/]+={0,2}$/.test(c))) throw pfFail("tampered");
+  let bytes; try{ const b=atob(chunks.join("")); bytes=new Uint8Array(b.length); for(let i=0;i<b.length;i++) bytes[i]=b.charCodeAt(i); }catch(e){ throw pfFail("tampered"); }
+  if(bytes.length!==+hm[2] || crc32(bytes).toString(16)!==hm[3]) throw pfFail("tampered");
+  let p; try{ p=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes)); }catch(e){ throw pfFail("tampered"); }
+  if(!p || typeof p!=="object" || Array.isArray(p) || p.app!==PF_APP || p.kind!==PF_KIND) throw pfFail("notours");
+  if(typeof p.format!=="number" || p.format>PF_FORMAT) throw pfFail("newer");
+  if((p.flow!=="onboarding" && p.flow!=="offboarding") || !p.data || typeof p.data!=="object" || Array.isArray(p.data)) throw pfFail("broken");
+  return p;
+}
+/* an inventory device with the same serial, or the same id when neither has a serial */
+function pfMatch(inv, d){ const s=normName(d.serial); return s? inv.find(x=>normName(x.serial)===s) || null : inv.find(x=>x.id===d.id && !normName(x.serial)) || null; }
+function pfNameOf(p){ const r = p.flow==="onboarding"? (p.data.onb && p.data.onb.intake && p.data.onb.intake.role) : (p.data.intake && p.data.intake.role); return (typeof r==="string" && r.trim())? r.replace(/\s+/g," ").trim().slice(0,200) : "this person"; }
+/* the onboarding in a file, with its devices matched to the inventory (inventory is changed only on a copy) */
+function pfOnbFrom(p){
+  if(!p.data.onb || typeof p.data.onb!=="object" || Array.isArray(p.data.onb) || !p.data.onb.intake || typeof p.data.onb.intake!=="object") throw pfFail("broken");
+  const o=normalizeOnb(p.data.onb), files=cleanDevices(p.data.devices, true), inv=state.inventory.slice(), map={};
+  let linked=0, added=0;
+  files.forEach(fd=>{
+    if(!o.devices.some(e=>e.invId===fd.id)) return;
+    const m=pfMatch(inv, fd);
+    if(m){ map[fd.id]=m.id; linked++; return; }
+    const d=JSON.parse(JSON.stringify(fd)); if(inv.some(x=>x.id===d.id)) d.id=uid("i");
+    inv.push(d); map[fd.id]=d.id; added++;
+  });
+  const seen=new Set();
+  o.devices=o.devices.filter(e=>map[e.invId] && !seen.has(map[e.invId]) && seen.add(map[e.invId])).map(e=>Object.assign(e,{invId:map[e.invId]}));
+  Object.keys(o.sets).forEach(k=>{ o.sets[k]=o.sets[k].filter(u=>map[u.invId]).map(u=>Object.assign(u,{invId:map[u.invId]})); });
+  return {o:o, inv:inv, linked:linked, added:added, files:files, map:map};
+}
+function pfOnbSummary(o, inv){
+  const i=o.intake, devs=o.devices.map(e=>inv.find(x=>x.id===e.invId)).filter(Boolean);
+  return (i.role.trim()||"New person")+(i.dept.trim()? ", "+i.dept.trim() : "")+", "+(i.startDate? "onboarded "+fmtShort(i.startDate) : "no start date")+", "+
+    pfCount(pfSystemsOf(i).length,"system","systems")+", "+pfDevCount(devs.map(d=>d.type));
+}
+function pfLinkText(linked, added, addedWhere){
+  const out=[];
+  if(linked) out.push("Linked "+pfCount(linked,"device","devices")+" to your inventory by serial number.");
+  if(added) out.push(addedWhere==="inv"? "Added "+pfCount(added,"device","devices")+" to the inventory, since "+(added===1?"it was":"they were")+" not there yet."
+    : pfCount(added,"device isn't","devices aren't")+" in your inventory, so "+(added===1?"it was":"they were")+" added for this person only.");
+  return out.length? " "+out.join(" ") : "";
+}
+const pfWrong = {
+  onb: p=>"This is the offboarding file for "+pfNameOf(p)+". They have already left, so there is nothing to onboard. Nothing was changed.",
+  offFromOnb: p=>"This is the offboarding file for "+pfNameOf(p)+", not their onboarding file. To pick up where you left off, choose Continue an offboarding. Nothing was changed.",
+  offContinue: p=>"This is the onboarding file for "+pfNameOf(p)+". To start their offboarding from it, choose Open their onboarding file. Nothing was changed."
+};
+/* fills the open tab from the file; returns the message. Nothing changes until everything has checked out. */
+function pfApply(mode, p){
+  const want = mode==="offContinue"? "offboarding" : "onboarding";
+  if(p.flow!==want) return {text:pfWrong[mode](p), warn:true};
+  if(mode==="onb"){
+    const r=pfOnbFrom(p);
+    r.o.step="intake";
+    state.onb=r.o; state.inventory=r.inv;
+    return {text:"Opened: "+pfOnbSummary(r.o, r.inv)+"."+pfLinkText(r.linked, r.added, "inv"), go:"Go to the checklist"};
+  }
+  if(mode==="offFromOnb"){
+    const r=pfOnbFrom(p), o=r.o, oi=o.intake;
+    /* the devices they were given (all picked ones if none were marked handed out yet) */
+    const ents = o.devices.some(e=>e.handed)? o.devices.filter(e=>e.handed) : o.devices;
+    let linked=0, only=0; const devices=[], used=new Set(state.inventory.map(x=>x.id));
+    ents.forEach(e=>{
+      const fileDev=r.files.find(fd=>r.map[fd.id]===e.invId); if(!fileDev) return;
+      const m=pfMatch(state.inventory, fileDev), src=m || fileDev, copy=JSON.parse(JSON.stringify(src));
+      delete copy.invStatus; copy.id=uid("d"); while(used.has(copy.id)) copy.id+="o"; used.add(copy.id);
+      copy.status="out"; copy.at=null; if(!copy.assignedTo) copy.assignedTo=oi.role;
+      if(m){ copy.invId=m.id; linked++; } else { delete copy.invId; only++; }
+      devices.push(cleanDevices([copy], false)[0]);
+    });
+    const fromOnb=pfCleanFromOnb({role:oi.role, type:oi.type, dept:oi.dept, startDate:oi.startDate, doneBy:oi.doneBy, approvedBy:oi.approvedBy, admin:oi.admin, adminWhy:oi.adminWhy,
+      systems:oi.systems, other:oi.other, fileDate:o.fileDate,
+      devices:ents.map(e=>{ const fd=r.files.find(x=>r.map[x.id]===e.invId); return fd? {type:fd.type, model:fd.model, serial:fd.serial, handed:e.handed && e.at? isoDate(new Date(e.at)) : ""} : null; }).filter(Boolean)});
+    state.intake={role:oi.role, type:oi.type, departure:"planned", lastDay:"", doneBy:state.intake.doneBy, admin:oi.admin, systems:oi.systems.slice(), other:oi.other, regs:blankRegs(), dept:oi.dept};
+    state.items={}; state.devices=devices; state.fromOnb=fromOnb; state.example=false; state.step="intake";
+    return {text:"Opened: "+pfOnbSummary(o, r.inv)+". Their systems, admin answer, type, department and devices are filled in. Add their last day."+pfLinkText(linked, only, "person")};
+  }
+  /* Continue an offboarding */
+  const d=p.data;
+  if(!d.intake || typeof d.intake!=="object" || Array.isArray(d.intake)) throw pfFail("broken");
+  const s=normalizeState({intake:d.intake, items:d.items, devices:d.devices});
+  if(!s) throw pfFail("broken");
+  let linked=0, only=0; const invIds=new Set(state.inventory.map(x=>x.id));
+  s.devices.forEach(dv=>{
+    while(invIds.has(dv.id)) dv.id+="o";
+    const m=pfMatch(state.inventory, dv);
+    if(m){ dv.invId=m.id; linked++; } else { delete dv.invId; only++; }
+  });
+  state.intake=s.intake; state.items=s.items; state.devices=s.devices; state.fromOnb=pfCleanFromOnb(d.fromOnb); state.example=false; state.step="intake";
+  const i=s.intake, c=counts(activeTasks());
+  return {text:"Opened: "+(i.role.trim()||"Departing person")+(i.dept.trim()? ", "+i.dept.trim() : "")+", "+(i.lastDay? "last day "+fmtShort(i.lastDay) : "no last day yet")+", "+
+    c.done+" of "+c.total+" steps done, "+pfDevCount(s.devices.map(x=>x.type))+"."+pfLinkText(linked, only, "person"), go:"Go to the checklist"};
+}
+function pfOpen(mode){
+  const flow = mode==="onb"? "on" : "off";
+  const fi=document.createElement("input"); fi.type="file"; fi.accept=PF_ACCEPT;
+  fi.addEventListener("change",()=>{
+    const f=fi.files&&fi.files[0]; if(!f) return;
+    const show=m=>{ pfMsg[flow]=m; const y=window.scrollY; render(); window.scrollTo(0,y); const b=document.getElementById("pfMsg"); if(b) b.focus({preventScroll:true}); };
+    const fail=code=>show({text:PF_ERR[code]||PF_ERR.broken, warn:true});
+    if(f.size>PF_MAX_BYTES){ fail("big"); return; }
+    const rd=new FileReader();
+    rd.onerror=()=>fail("read");
+    rd.onload=()=>{
+      const u8=new Uint8Array(rd.result);
+      pfReadData(u8).then(p=>{
+        const want = mode==="offContinue"? "offboarding" : "onboarding";
+        if(p.flow!==want){ show({text:pfWrong[mode](p), warn:true}); return; }
+        const apply=()=>{
+          const before=JSON.stringify(state); let m;
+          try{ m=pfApply(mode, p); }catch(err){ state=JSON.parse(before); fail(err && err.pf? err.pf : "broken"); return; }
+          if(flow==="off") pfOffName=""; /* an onboarding file keeps its own name, so saving again replaces it */
+          pfMarkSaved(flow); /* it matches the file, so there is nothing new to save yet */
+          openMore.clear(); snOpen.clear(); importMsg=""; onbMsg=""; pfSaveMsg[flow]=""; pfNameEdit[flow]=false; save(); show(m);
+        };
+        const entered = flow==="on"? onbEntered(state.onb) : offEntered(state);
+        if(!entered){ apply(); return; }
+        askModal({title:"Open this file?", text:"This replaces everything entered for "+personName(flow)+" with "+pfNameOf(p)+" from the file. Your inventory stays.",
+          buttons:[saveFirstButton(flow), {label:"Open it", kind:"", run:apply}], back:'#pfMsg'});
+      }, err=>fail(err && err.pf? err.pf : "broken"));
+    };
+    rd.readAsArrayBuffer(f);
+  });
+  fi.click();
+}
+
+/* ---------- views ---------- */
+function pfOpenBox(flow){
+  if(exView) return '';
+  const m=pfMsg[flow];
+  const btn=(mode,label)=>'<button class="btn" type="button" data-act="pfOpen" data-mode="'+mode+'">'+label+'</button>';
+  return '<div class="pfopen"><div class="pfhead"><span class="tag">Optional</span><b>'+(flow==="on"? "Picking up an onboarding?" : "Have a saved file for them?")+'</b></div>'+
+    (flow==="on"? '<div class="pfchoice">'+btn("onb","Open their onboarding file")+'<small>To finish the 30 day check or fix details.</small></div>'
+      : '<div class="pfchoice">'+btn("offFromOnb","Open their onboarding file")+'<small>Fills in their systems, other systems, admin answer, type, department and devices, so you only add the last day.</small></div>'+
+        '<div class="pfchoice">'+btn("offContinue","Continue an offboarding")+'<small>Picks up where you left off.</small></div>')+
+    (m? '<div class="banner'+(m.warn? " warn" : "")+'" role="status" id="pfMsg" tabindex="-1"><span>'+esc(m.text)+'</span>'+
+      (m.go? '<button class="btn" type="button" data-act="pfGo">'+esc(m.go)+'</button>' : '')+'</div>' : '')+
+    '</div><small class="muted pfnote">Files open in your browser only. Nothing is uploaded.</small>';
+}
+function pfSaveBox(flow){
+  if(exView) return '<p class="muted">Saving a file is turned off in the example. Exit the example to save your own work.</p>';
+  if(!TOP) return "";
+  const first=pfFirst(flow), name=pfName(flow), year=(flow==="on"? pfFileDate("on") : todayISO()).slice(0,4);
+  return '<div class="pfsave"><div class="rowbtns"><button class="btn primary" type="button" data-act="pfSave" data-flow="'+flow+'">Save '+esc(first? pfPoss(first) : "their")+' file</button></div>'+
+    (pfNameEdit[flow]? '<div class="pfname"><label for="pfName_'+flow+'">File name</label><input type="text" id="pfName_'+flow+'" maxlength="160" value="'+esc(name)+'">'+
+        '<span class="rowbtns"><button class="linkbtn" type="button" data-act="pfNameDone" data-flow="'+flow+'">Done</button><button class="linkbtn" type="button" data-act="pfNameAuto" data-flow="'+flow+'">Use the automatic name</button></span></div>'
+      : '<div class="pfname"><span class="muted">File name:</span> <b class="mono" id="pfNameShow_'+flow+'">'+esc(name)+'</b> <button class="linkbtn" type="button" data-act="pfRename" data-flow="'+flow+'">Change name</button></div>')+
+    '<small class="muted">Tip: keep it in a folder like HR / '+(flow==="on"? "Onboarding" : "Offboarding")+' '+year+'.'+
+      (flow==="on"? ' Saving again uses the same name, so it replaces the old file.' : ' Each save makes a new file with today\'s date.')+'</small>'+
+    (pfSaveMsg[flow]? '<small role="status" id="pfSaveMsg" style="color:var(--done)">'+esc(pfSaveMsg[flow])+'</small>' : '')+'</div>';
+}
+/* clicks for opening and saving person files; returns true when handled */
+function pfClick(e){
+  const a=e.target.closest("[data-act]"); if(!a) return false;
+  const act=a.dataset.act, flow=a.dataset.flow || (state.tab==="on"? "on" : "off");
+  if(act==="pfOpen"){ pfOpen(a.dataset.mode); return true; }
+  if(act==="pfSave"){ pfSave(flow).then(()=>redrawKeep('[data-act="pfSave"]')); return true; }
+  if(act==="pfRename"){ pfNameEdit[flow]=true; redrawKeep("#pfName_"+flow); const f=document.getElementById("pfName_"+flow); if(f) f.select(); return true; }
+  if(act==="pfNameDone"){ pfNameEdit[flow]=false; redrawKeep('[data-act="pfRename"]'); return true; }
+  if(act==="pfNameAuto"){ if(flow==="on"){ state.onb.fileName=""; save(); } else pfOffName=""; pfNameEdit[flow]=false; redrawKeep('[data-act="pfRename"]'); return true; }
+  if(act==="exitExample"){ exitExample(); return true; }
+  if(act==="pfGo"){ if(state.tab==="on") goOnb("list"); else go("list"); return true; }
+  return false;
+}
+
+/* ---------- v2.6: keeping work safe ---------- */
+/* has anything been typed or checked for this person? (a sample person from an older save does not count) */
+function offEntered(s){
+  const i=s.intake; if(s.example) return false;
+  return !!(i.role.trim() || i.doneBy.trim() || (i.dept||"").trim() || i.other.trim() || i.systems.length || i.admin || i.departure==="unplanned" ||
+    Object.keys(i.regs).some(k=>i.regs[k]) || s.devices.length || Object.keys(s.items).length || s.fromOnb);
+}
+function onbEntered(o){
+  const i=o.intake; if(o.example) return false;
+  return !!(i.role.trim() || i.doneBy.trim() || i.dept.trim() || i.approvedBy.trim() || i.other.trim() || i.systems.length || i.admin || i.startDate ||
+    o.devices.length || Object.keys(o.items).length);
+}
+/* the same text whatever order the keys are in, so a reload does not look like a change */
+function stableStr(v){
+  if(Array.isArray(v)) return "["+v.map(stableStr).join(",")+"]";
+  if(v && typeof v==="object") return "{"+Object.keys(v).sort().filter(k=>v[k]!==undefined).map(k=>JSON.stringify(k)+":"+stableStr(v[k])).join(",")+"}";
+  return JSON.stringify(v===undefined? null : v);
+}
+/* a short fingerprint of one person's work, kept when their file is saved or opened */
+function pfSig(flow, s){
+  const pick = flow==="on"? {i:s.onb.intake, it:s.onb.items, d:s.onb.devices, st:s.onb.sets} : {i:s.intake, it:s.items, d:s.devices, f:s.fromOnb||null};
+  return crc32(new TextEncoder().encode(stableStr(pick))).toString(16);
+}
+function pfMarkSaved(flow){ if(flow==="on") state.onb.fileSig=pfSig("on", state); else state.fileSig=pfSig("off", state); }
+function pfUnsaved(flow, s){
+  return flow==="on"? onbEntered(s.onb) && s.onb.fileSig!==pfSig("on", s) : offEntered(s) && s.fileSig!==pfSig("off", s);
+}
+/* the person's own work, even while the example is on screen */
+function ownState(){ return exView? JSON.parse(exView.json) : state; }
+window.addEventListener("beforeunload", e=>{
+  let s; try{ s=ownState(); }catch(err){ return; }
+  if(pfUnsaved("off", s) || pfUnsaved("on", s)){ e.preventDefault(); e.returnValue=""; }
+});
+
+/* ---------- the example is a separate view ---------- */
+/* Load example puts their work aside, untouched. Nothing done in the example is saved, and Exit example brings back exactly what they had. */
+function exampleState(base){
+  const ex=example(); ex.onb=exampleOnb();
+  return Object.assign(ex, {learn:base.learn, tab: base.tab==="inv"? "off" : base.tab, invStep:base.invStep, inventory:JSON.parse(JSON.stringify(base.inventory))});
+}
+function clearViewBits(){ openMore.clear(); openInv.clear(); snOpen.clear(); learnOpen.clear(); learnClosed.clear(); importMsg=""; invMsg=""; onbMsg=""; invQuery=""; invFilter="all"; pfReset(); }
+function loadExample(){
+  const own = exView? exView.json : JSON.stringify(state);
+  const ex=exampleState(exView? JSON.parse(own) : state);
+  if(exView) ex.tab=state.tab==="inv"? "off" : state.tab;
+  exView={json:own}; state=ex; clearViewBits(); render(); window.scrollTo({top:0, behavior:"smooth"});
+}
+function exitExample(){
+  if(!exView) return;
+  state=JSON.parse(exView.json); exView=null; clearViewBits(); render(); window.scrollTo({top:0, behavior:"smooth"});
+  const b=document.getElementById("btnExample"); if(b) b.focus({preventScroll:true});
+}
+function exViewBanner(){
+  return exView? '<div class="banner exview" role="status"><span><b>You\'re looking at an example.</b> Your own work is saved and untouched. Changes here are not saved.</span><button class="btn primary" type="button" data-act="exitExample">Exit example</button></div>' : '';
+}
+
+/* ---------- the pop-up ---------- */
+/* o: {title, text, buttons:[{label, kind:"primary"|"warn"|"", run, stay}], focus: index, back: selector to focus after a redraw}
+   A button closes the pop-up first and then runs, so the page can take focus again. stay: it runs with the pop-up still open.
+   Escape and clicking outside cancel. Focus stays inside while it is open and goes back where it was when it closes. */
+let modalBack=null;
+function modalEl(){
+  let d=document.getElementById("modal");
+  if(!d){
+    d=document.createElement("dialog"); d.id="modal"; d.setAttribute("aria-labelledby","modalTitle"); d.setAttribute("aria-describedby","modalText");
+    document.body.appendChild(d);
+    d.addEventListener("cancel", e=>{ e.preventDefault(); closeModal(); });
+    d.addEventListener("click", e=>{
+      if(e.target===d){ closeModal(); return; } /* the dark area outside the box */
+      const b=e.target.closest("button[data-m]"); if(!b || !d.__btns) return;
+      const btn=d.__btns[+b.dataset.m];
+      if(btn.stay){ btn.run(); return; }
+      if(!btn.run){ closeModal(); return; } /* Cancel */
+      const back=modalBack; closeModal(true); btn.run();
+      if(!document.activeElement || document.activeElement===document.body) focusBack(back);
+    });
+    d.addEventListener("keydown", e=>{
+      if(e.key==="Escape"){ e.preventDefault(); closeModal(); return; }
+      if(e.key!=="Tab") return;
+      const f=Array.from(d.querySelectorAll("button:not([disabled]),input,select,textarea")).filter(x=>!x.hidden); if(!f.length) return;
+      const i=f.indexOf(document.activeElement);
+      if(e.shiftKey && i<=0){ e.preventDefault(); f[f.length-1].focus(); }
+      else if(!e.shiftKey && i===f.length-1){ e.preventDefault(); f[0].focus(); }
+    });
+  }
+  return d;
+}
+function askModal(o){
+  const d=modalEl();
+  if(d.open) closeModal(true);
+  modalBack={el:document.activeElement, sel:o.back||""};
+  d.__btns=o.buttons.concat([{label:"Cancel", kind:"", run:null}]);
+  d.innerHTML='<div class="modalbox"><h2 id="modalTitle">'+esc(o.title)+'</h2><p id="modalText">'+esc(o.text)+'</p>'+
+    '<small id="modalMsg" role="status"></small><div class="rowbtns">'+d.__btns.map((b,i)=>'<button class="btn'+(b.kind? " "+b.kind : "")+'" type="button" data-m="'+i+'">'+esc(b.label)+'</button>').join("")+'</div></div>';
+  if(typeof d.showModal==="function") d.showModal(); else d.setAttribute("open","");
+  const btns=d.querySelectorAll("button[data-m]"); (btns[o.focus||0]||btns[0]).focus();
+}
+function modalSay(text){ const m=document.getElementById("modalMsg"); if(m) m.textContent=text; }
+function closeModal(quiet){
+  const d=document.getElementById("modal"); if(!d || !d.open) return;
+  if(typeof d.close==="function") d.close(); else d.removeAttribute("open");
+  d.__btns=null;
+  const b=modalBack; modalBack=null; if(!quiet) focusBack(b);
+}
+function focusBack(b){
+  if(!b) return;
+  const el = b.el && b.el.isConnected? b.el : (b.sel? document.querySelector(b.sel) : null);
+  if(el && el.focus) el.focus({preventScroll:true});
+}
+/* "Save their file first": saves, then keeps the pop-up open so they can go on */
+function saveFirstButton(flow){
+  return {label:"Save their file first", kind:"primary", stay:true, run:()=>{
+    if(!TOP){ modalSay("Saving a file needs the app open in its own tab."); return; }
+    pfSave(flow).then(()=>{ render(); modalSay(pfSaveMsg[flow]); });
+  }};
+}
+function personName(flow){ const w=pfWho(flow); return w || "this person"; }
+function clearPerson(flow){
+  if(flow==="on"){ state.onb=blankOnb(); onbMsg=""; }
+  else { state=Object.assign(blank(), keepApp()); state.intake.lastDay=isoDate(new Date()); }
+  pfOffName=""; pfReset(); save(); render();
+}
+/* has anything been typed for this device beyond a new blank row? */
+function devEntered(d){
+  const b=newDevice(d.type);
+  return d.status!=="out" || ["model","serial","os","enc"].concat(DEV_FIELDS.filter(f=>f.kind!=="enc").map(f=>f.k)).some(k=>stableStr(d[k])!==stableStr(b[k]));
+}
+
 /* Offboarding intake: names that have devices in the inventory */
 function invPeople(){
   const m=new Map();
@@ -2534,17 +3138,18 @@ function render(){
   /* the progress card and the Learn mode, example and start new buttons belong to a person, so Inventory has none */
   document.getElementById("card").hidden = tab==="inv";
   document.querySelector(".top .actions").hidden = tab==="inv";
-  v.innerHTML = tab==="on" ? (state.onb.step==="list" ? viewOnbList() : state.onb.step==="record" ? viewOnbRecord() : viewOnbIntake())
+  document.getElementById("btnNew").hidden = !!exView;
+  v.innerHTML = exViewBanner() + (tab==="on" ? (state.onb.step==="list" ? viewOnbList() : state.onb.step==="record" ? viewOnbRecord() : viewOnbIntake())
     : tab==="inv" ? (state.invStep==="add" ? viewInvAdd() : state.invStep==="reports" ? viewInvReports() : viewInvAll())
-    : state.step==="list" ? viewList() : state.step==="record" ? viewRecord() : viewIntake();
+    : state.step==="list" ? viewList() : state.step==="record" ? viewRecord() : viewIntake());
   document.getElementById("learnMore").innerHTML = viewLearnMore();
   document.getElementById("dataPanel").innerHTML = viewData();
   const lb=document.getElementById("btnLearn"); lb.setAttribute("aria-pressed", String(!!state.learn)); lb.textContent = "Learn mode: "+(state.learn?"On":"Off");
   renderCard();
 }
-function go(step){ importMsg=""; state.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
+function go(step){ importMsg=""; pfReset(); state.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
 function goInv(step){ importMsg=""; invMsg=""; state.invStep=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
-function setTab(tab){ importMsg=""; invMsg=""; onbMsg=""; state.tab=tab; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
+function setTab(tab){ importMsg=""; invMsg=""; onbMsg=""; pfReset(); state.tab=tab; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
 
 /* ---------- events ---------- */
 document.querySelector("nav.tabs").addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); });
@@ -2555,13 +3160,15 @@ view.addEventListener("input",e=>{
   const el=e.target; const i=state.intake;
   if(el.id==="invSearch"){ invQuery=el.value.slice(0,100); const t=document.getElementById("invTable"); if(t) t.innerHTML=invTableHTML(); return; }
   /* onboarding fields */
-  if(["onb_role","onb_doneBy","onb_startDate","onb_other","onb_adminWhy"].indexOf(el.id)!==-1){
+  if(el.id==="pfName_on"){ state.onb.fileName=el.value.slice(0,160); save(); return; }
+  if(el.id==="pfName_off"){ pfOffName=el.value.slice(0,160); return; }
+  if(["onb_role","onb_doneBy","onb_startDate","onb_other","onb_adminWhy","onb_dept","onb_approvedBy"].indexOf(el.id)!==-1){
     state.onb.intake[el.id.slice(4)] = el.value.slice(0, el.id==="onb_other"? 1000 : el.id==="onb_adminWhy"? 300 : 200);
     save(); renderCard(); updateOnbCount(); return;
   }
   if(el.dataset.onbnote){ const s=Object.assign({},onbItemState(el.dataset.onbnote)); s.note=el.value.slice(0,2000); state.onb.items[el.dataset.onbnote]=s; save(); return; }
   if(el.dataset.onbdev){ const en=state.onb.devices.find(x=>x.invId===el.dataset.onbdev); if(en && !en.handed){ en[el.dataset.onbfield] = el.dataset.onbfield==="dateAssigned"? (/^\d{4}-\d{2}-\d{2}$/.test(el.value)? el.value : "") : el.value.slice(0,200); save(); } return; }
-  if(el.id==="role"||el.id==="doneBy"||el.id==="lastDay"||el.id==="other"){ i[el.id]=el.value; }
+  if(el.id==="role"||el.id==="doneBy"||el.id==="lastDay"||el.id==="other"||el.id==="dept"){ i[el.id]=el.value.slice(0, el.id==="other"? 1000 : 200); }
   else if(el.dataset.note){ const s=Object.assign({},itemState(el.dataset.note)); s.note=el.value; state.items[el.dataset.note]=s; save(); return; }
   else if(el.dataset.dev && el.dataset.field && (el.tagName==="INPUT"||el.tagName==="TEXTAREA")){
     const dv=findDev(el.dataset.dev); if(!dv) return;
@@ -2630,6 +3237,7 @@ function updateCount(){ const el=document.getElementById("buildCount"); if(el) e
 
 view.addEventListener("click",e=>{
   const g=e.target.closest("[data-go]"); if(g){ go(g.dataset.go); return; }
+  if(pfClick(e)) return;
   if(invClick(e)) return;
   if(onbClick(e)) return;
   const a=e.target.closest("[data-act]"); if(!a) return;
@@ -2665,7 +3273,13 @@ view.addEventListener("click",e=>{
     fi.click(); return;
   }
   if(act==="removeDevice"){
-    const idx=state.devices.findIndex(x=>x.id===a.dataset.dev); if(idx<0) return;
+    const dv=state.devices.find(x=>x.id===a.dataset.dev); if(!dv) return;
+    if(devEntered(dv) && a.dataset.sure!=="1"){
+      askModal({title:"Remove this device?", text:"This clears everything entered for "+devName(dv)+(dv.serial? " ("+dv.serial+")" : "")+".",
+        buttons:[{label:"Remove it", kind:"warn", run:()=>{ a.dataset.sure="1"; a.click(); }}], focus:1});
+      return;
+    }
+    const idx=state.devices.indexOf(dv);
     state.devices.splice(idx,1); save();
     const y=window.scrollY; render(); window.scrollTo(0,y);
     /* keep keyboard focus in the list: the row that moved up, else the one above, else Add device */
@@ -2705,18 +3319,16 @@ function download(){
 const btnNew=document.getElementById("btnNew");
 /* Start new and Load example work on the person in the open tab, and never touch the inventory */
 function startNew(){
-  const onTab = state.tab==="on", ex = onTab? state.onb.example : state.example;
-  if(!ex && !confirmNew){ confirmNew=true; btnNew.textContent="Tap again to clear"; setTimeout(()=>{confirmNew=false; btnNew.textContent="Start new";},3000); return; }
-  confirmNew=false; btnNew.textContent="Start new";
-  if(onTab){ state.onb=blankOnb(); onbMsg=""; save(); render(); return; }
-  state=Object.assign(blank(), keepApp()); state.intake.lastDay=isoDate(new Date()); save(); render();
+  if(exView){ exitExample(); return; }
+  const flow = state.tab==="on"? "on" : "off", entered = flow==="on"? onbEntered(state.onb) : offEntered(state);
+  if(!entered){ clearPerson(flow); return; } /* nothing to lose */
+  askModal({title:"Start over?", text:"This clears everything entered for "+personName(flow)+". Your inventory stays.",
+    buttons:(TOP? [saveFirstButton(flow)] : []).concat([{label:"Clear it", kind:"warn", run:()=>{ clearPerson(flow); }}]), back:"#btnNew"});
 }
 function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb}; }
 btnNew.addEventListener("click",startNew);
-document.getElementById("btnExample").addEventListener("click",()=>{
-  if(state.tab==="on"){ state.onb=exampleOnb(); onbMsg=""; } else state=Object.assign(example(), keepApp());
-  save(); render();
-});
+/* Load example opens a separate example view and never touches their work */
+document.getElementById("btnExample").addEventListener("click", loadExample);
 /* Learn mode opens or closes every explanation, the glossary and the sources at once */
 document.getElementById("btnLearn").addEventListener("click",()=>{
   state.learn=!state.learn; learnOpen.clear(); learnClosed.clear(); save();
