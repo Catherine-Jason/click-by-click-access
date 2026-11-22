@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nMte6AhWrGHPyzxVYA6vZ8vSKlTQSwH61ZBotDqVsJk='; style-src 'sha256-cTUIz9M2mGLtCBN3WbelutCNrsA0shnAOmuNBnhojvc='; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#03060b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -26,9 +27,17 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
+/* v2.9: the fonts load from the site itself (fonts folder, SIL Open Font License), so the page contacts no other website. Latin and Latin Extended letters only, like before */
+@font-face{font-family:"IBM Plex Mono"; font-style:normal; font-weight:400; font-display:swap; src:url(fonts/ibm-plex-mono-400-latin.woff2) format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"IBM Plex Mono"; font-style:normal; font-weight:400; font-display:swap; src:url(fonts/ibm-plex-mono-400-latin-ext.woff2) format("woff2"); unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:"IBM Plex Mono"; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/ibm-plex-mono-500-latin.woff2) format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"IBM Plex Mono"; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/ibm-plex-mono-500-latin-ext.woff2) format("woff2"); unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:"IBM Plex Sans"; font-style:normal; font-weight:400 600; font-display:swap; src:url(fonts/ibm-plex-sans-latin.woff2) format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"IBM Plex Sans"; font-style:normal; font-weight:400 600; font-display:swap; src:url(fonts/ibm-plex-sans-latin-ext.woff2) format("woff2"); unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:"JetBrains Mono"; font-style:normal; font-weight:500 800; font-display:swap; src:url(fonts/jetbrains-mono-latin.woff2) format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"JetBrains Mono"; font-style:normal; font-weight:500 800; font-display:swap; src:url(fonts/jetbrains-mono-latin-ext.woff2) format("woff2"); unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+.okmsg{color:var(--done)} .footlink{color:var(--accent)}
 /* Layout: one working column with a sticky access card on top; three steps in order: Intake, Checklist, Record */
 /* Single black terminal look on purpose: same in light and dark viewer themes */
 :root{
@@ -368,7 +377,8 @@ nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.8 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.9 &middot; <a class="footlink" href="https://www.catherinejason.com" target="_blank" rel="noopener">catherinejason.com</a></p>
+    <p>The official address is <a class="footlink" href="https://access.catherinejason.com/">access.catherinejason.com</a>.</p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
@@ -1197,11 +1207,12 @@ function recNoIn(v){ return typeof v==="string" && /^(ON|OFF)-\d{8}-[2-9A-HJ-NP-
 function load(){ try{ const raw=localStorage.getItem(KEY); if(raw) return normalizeState(JSON.parse(raw)); }catch(e){} return null }
 let exView = null; /* v2.6: while the example is on screen, the person's own work waits here untouched and nothing is saved */
 let saveFailed=false;
-function save(){ if(exView) return; try{ localStorage.setItem(KEY, JSON.stringify(state)); saveFailed=false; }catch(e){ saveFailed=true; } }
+function save(){ if(exView || clearing) return; try{ localStorage.setItem(KEY, JSON.stringify(state)); saveFailed=false; }catch(e){ saveFailed=true; } }
 
 let state = load();
 /* first visit: their own empty work (the example is only ever a separate view, so nothing real is typed into it by mistake) */
 if(!state) state=blank();
+if(location.hash==="#cleared"){ try{ history.replaceState(null, "", location.pathname+location.search); }catch(e){} }
 /* v2.7: the start screen shows when nothing is in progress; work in progress goes straight back to that work. The Inventory tab is remembered. */
 { const offW=offEntered(state), onW=onbEntered(state.onb), cur=state.tab; if(!((cur==="off" && offW) || (cur==="on" && onW) || (cur==="inv" && state.inventory.length))) state.tab = onW? "on" : offW? "off" : "on"; } /* OPENING TAB RULE: the last tab if it has work, else a tab with work, else Onboarding */
 let importMsg = "";
@@ -1579,7 +1590,7 @@ function viewDeviceInputs(){
     (TOP? '<button class="linkbtn" type="button" data-act="csvTemplate">Download a blank template (.csv)</button><button class="linkbtn" type="button" data-act="xlsxTemplate">Download a blank template (.xlsx)</button>' : '')+'</div>'+
     '<small>Pick their name from the list, or type it above, then Load their devices from inventory adds every device on the Inventory tab assigned to them. When you check one in, the inventory updates too.</small>'+
     '<small>In Excel, filter your inventory to this person\'s devices and save it as an Excel workbook (.xlsx). Rows hidden by the filter are left out. A CSV saves hidden rows too, so delete the rows you do not need before saving as CSV. It reads the first sheet, with the same columns as the blank template, plus common names like Hostname, User, Department and Warranty.</small>'+
-    (importMsg? '<small id="importMsg" role="status" style="color:var(--done)">'+esc(importMsg)+'</small>' : '')+'</div>';
+    (importMsg? '<small id="importMsg" role="status" class="okmsg">'+esc(importMsg)+'</small>' : '')+'</div>';
 }
 
 /* collapsible "More details" form, used on both the intake row and the check in card */
@@ -1721,7 +1732,7 @@ function recordText(){
 /* ================= v2.8: records for HR and audits (mirrored in Click by Click Offboarding, each with its own name and address) ================= */
 /* The organization name is optional and kept on each record. A record with no name of its own yet (null) uses the last name typed anywhere.
    The record number is made the first time it is needed and kept with the person, so saving the same person again keeps it. */
-const REC_APP = "Click by Click Access", REC_SITE = "access.catherinejason.com", REC_VERSION = "2.8";
+const REC_APP = "Click by Click Access", REC_SITE = "access.catherinejason.com", REC_VERSION = "2.9";
 const REC_DISCLAIMER = "This record shows the steps your organization marked as done. It is not a certification of compliance and does not replace advice from your IT, HR or legal team.";
 const REC_CODE = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ", REC_NO_RE = /^(ON|OFF)-\d{8}-[2-9A-HJ-NP-Z]{4}$/;
 function recIntake(flow){ return flow==="on"? state.onb.intake : state.intake; }
@@ -1942,12 +1953,12 @@ function viewInvAdd(){
     '</div>'+snBox("na", "", "")+
     '<small class="muted">Fill in every other detail after you add it, from All devices.</small>'+
     '<div class="rowbtns"><button class="btn primary" type="button" data-act="invAdd">Add to inventory</button></div>'+
-    (invMsg? '<small id="invMsg" role="status" style="color:var(--done)">'+esc(invMsg)+(invAdded? ' <button class="linkbtn" type="button" data-invshow="'+invAdded+'">Open it in All devices</button>' : '')+'</small>' : '')+
+    (invMsg? '<small id="invMsg" role="status" class="okmsg">'+esc(invMsg)+(invAdded? ' <button class="linkbtn" type="button" data-invshow="'+invAdded+'">Open it in All devices</button>' : '')+'</small>' : '')+
     '<h3>Import from Excel</h3>'+
     '<div class="rowbtns"><button class="btn" type="button" data-act="invImport">Import from Excel (.csv or .xlsx)</button>'+
     (TOP? '<button class="linkbtn" type="button" data-act="csvTemplate">Download a blank template (.csv)</button><button class="linkbtn" type="button" data-act="xlsxTemplate">Download a blank template (.xlsx)</button>' : '')+'</div>'+
     '<small class="muted">In Excel, use File, Save As, and pick Excel Workbook (.xlsx) or CSV. If you filter first, save as a workbook: rows hidden by the filter are left out, but a CSV saves hidden rows too. It reads the first sheet, with the same columns as the blank template, plus common names like Hostname, User, Department, Warranty and Status. Rows with a serial or asset tag already in the inventory are skipped, so importing the same file twice is safe.</small>'+
-    (importMsg? '<small id="importMsg" role="status" style="color:var(--done)">'+esc(importMsg)+'</small>' : '')+
+    (importMsg? '<small id="importMsg" role="status" class="okmsg">'+esc(importMsg)+'</small>' : '')+
   '</section>';
 }
 function reportLists(){
@@ -2108,7 +2119,8 @@ function viewData(){
     (saveFailed? '<div class="banner warn"><span><b>This browser could not save your last change.</b> Its storage may be full or turned off. Download a backup now so you do not lose your work.</span></div>' : '')+
     '<div class="rowbtns">'+(TOP? '<button class="btn" type="button" data-act="backup">Download backup</button>' : '')+'<button class="btn" type="button" data-act="restore">Restore backup</button></div>'+
     (restoreMsg? '<small role="status" id="restoreMsg">'+esc(restoreMsg)+'</small>' : '')+
-    '<small class="muted">The backup file holds names, serial numbers and notes, so keep it somewhere safe, like your other staff records.</small></section>';
+    '<small class="muted">The backup file holds names, serial numbers and notes, so keep it somewhere safe, like your other staff records.</small>'+
+    (state.tab==="inv"? moreOptions("inv", '<button class="btn warn" type="button" data-act="clearComputer">Clear this computer</button>') : '')+'</section>';
 }
 function renderData(){ document.getElementById("dataPanel").innerHTML=viewData(); }
 /* check a backup file before anything changes: wrong, broken or edited files are turned away or cleaned */
@@ -2125,15 +2137,17 @@ function readBackup(text){
   return {state:s, summary:summary};
 }
 /* a backup is always their own work, even while the example is on screen */
-function downloadBackup(){ saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.8", saved:new Date().toISOString(), data:ownState()}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json"); }
+function downloadBackup(){ saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.9", saved:new Date().toISOString(), data:ownState()}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json"); }
 function restoreBackup(r){
   const tab=state.tab; exView=null; state=r.state; state.tab=tab; clearViewBits();
   save(); restoreMsg = saveFailed? "Restored for now, but this browser could not save it. Its storage may be full or turned off." : "Backup restored.";
   render(); const m=document.getElementById("restoreMsg"); if(m) m.scrollIntoView({block:"center"});
 }
 const dataPanel=document.getElementById("dataPanel");
+dataPanel.addEventListener("toggle",e=>{ const d=e.target; if(d.dataset && d.dataset.moreopts) moreOpen[d.dataset.moreopts]=d.open; }, true);
 dataPanel.addEventListener("click",e=>{
   const a=e.target.closest("[data-act]"); if(!a) return; const act=a.dataset.act;
+  if(act==="clearComputer"){ clearComputer(); return; }
   if(act==="backup"){ downloadBackup(); restoreMsg="Backup downloaded."; renderData(); return; }
   if(act==="restore"){
     const fi=document.createElement("input"); fi.type="file"; fi.accept=".json,application/json";
@@ -2477,7 +2491,7 @@ function viewOnbDevices(){
       '<div class="field"><label for="onbn_model">Make and model</label><input type="text" id="onbn_model" placeholder="Example: Dell Latitude 5440"></div>'+
       '<div class="field"><label for="onbn_serial">Serial or asset tag</label>'+snField({key:"onbn", attrs:' id="onbn_serial"', value:"", model:"", os:"", modelSel:"#onbn_model", osSel:"#onbn_os", ph:"Example: "})+'</div>'+
     '</div>'+snBox("onbn", "", "")+'<div class="rowbtns"><button class="btn" type="button" data-act="onbNewDev">Add to the inventory and this list</button></div></details>'+
-    (onbMsg? '<small id="onbMsg" role="status" style="color:var(--done)">'+esc(onbMsg)+'</small>' : '')+'</div>';
+    (onbMsg? '<small id="onbMsg" role="status" class="okmsg">'+esc(onbMsg)+'</small>' : '')+'</div>';
 }
 function onbItemHTML(t){
   const s=onbItemState(t.id);
@@ -2658,7 +2672,7 @@ function onbClick(e){
    and split over cells in column A, with the length and a checksum on the line above. Excel keeps hidden tabs and plain text cells
    when it opens and saves a workbook, and base64 has no spaces or symbols Excel could change, so the file still reopens after that.
    Opening checks the size, the zip, the checksum and every value, treats every value as text and never runs anything from the file. */
-const PF_APP = "Click by Click Access", PF_KIND = "person file", PF_FORMAT = 1, PF_VERSION = "2.8";
+const PF_APP = "Click by Click Access", PF_KIND = "person file", PF_FORMAT = 1, PF_VERSION = "2.9";
 const PF_MAX_BYTES = 5000000, PF_CHUNK = 30000, PF_SHEET = "Data";
 const PF_ACCEPT = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 let pfMsg = {on:null, off:null};      /* what the open box says: {text, warn, go} */
@@ -3082,7 +3096,7 @@ function pfSaveBox(flow){
       : '<div class="pfname"><span class="muted">File name:</span> <b class="mono" id="pfNameShow_'+flow+'">'+esc(name)+'</b> <button class="linkbtn" type="button" data-act="pfRename" data-flow="'+flow+'">Change name</button></div>')+
     '<small class="muted">Tip: keep it in a folder like HR / '+(flow==="on"? "Onboarding" : "Offboarding")+' '+year+'.'+
       (flow==="on"? ' Saving again uses the same name, so it replaces the old file.' : ' Each save makes a new file with today\'s date.')+'</small>'+
-    (pfSaveMsg[flow]? '<small role="status" id="pfSaveMsg" style="color:var(--done)">'+esc(pfSaveMsg[flow])+'</small>' : '')+'</div>';
+    (pfSaveMsg[flow]? '<small role="status" id="pfSaveMsg" class="okmsg">'+esc(pfSaveMsg[flow])+'</small>' : '')+'</div>';
 }
 /* clicks for opening and saving person files; returns true when handled */
 function pfClick(e){
@@ -3129,6 +3143,7 @@ function pfUnsaved(flow, s){
 /* the person's own work, even while the example is on screen */
 function ownState(){ return exView? JSON.parse(exView.json) : state; }
 window.addEventListener("beforeunload", e=>{
+  if(clearing) return; /* Clear this computer reloads on purpose */
   let s; try{ s=ownState(); }catch(err){ return; }
   if(pfUnsaved("off", s) || pfUnsaved("on", s)){ e.preventDefault(); e.returnValue=""; }
 });
@@ -3228,7 +3243,7 @@ function devEntered(d){
 }
 
 /* ================= v2.7 (Access only): Record step summary, 30 day checks ================= */
-let moreOpen = {on:false, off:false}; /* whether More options is open on each Record step */
+let moreOpen = {on:false, off:false, inv:false}; /* whether More options is open on each Record step */
 /* the top of each Record step: is it done, in plain words */
 function doneSummary(flow){
   const on=flow==="on", who= on? onbPerson() : personLabel(), i= on? state.onb.intake : state.intake;
@@ -3494,6 +3509,18 @@ function startNew(){
   if(!entered){ clearPerson(flow); return; } /* nothing to lose */
   askModal({title:"Start over?", text:"This clears everything entered for "+personName(flow)+". Your inventory stays.",
     buttons:(TOP? [saveFirstButton(flow)] : []).concat([{label:"Clear it", kind:"warn", run:()=>{ clearPerson(flow); }}]), back:"#btnNew"});
+}
+/* ---------- v2.9: Clear this computer ---------- */
+/* removes everything this app saved in this browser (only its own keys, never other apps on the same address), then reloads to an empty app */
+let clearing = false;
+function clearComputer(){
+  askModal({title:"Clear everything this app saved on this computer?", text:"Save any files you need first.",
+    buttons:[{label:"Clear everything", kind:"warn", run:()=>{
+      clearing=true;
+      try{ Object.keys(localStorage).filter(k=>k.indexOf("cbc-access")===0).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+      try{ history.replaceState(null, "", location.pathname+location.search+"#cleared"); }catch(e){}
+      location.reload();
+    }}], back:"[data-act=\"clearComputer\"]"});
 }
 function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb, lastOrg:state.lastOrg, invOrg:state.invOrg}; }
 btnNew.addEventListener("click",startNew);

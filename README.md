@@ -16,4 +16,8 @@ It is free and open source under the MIT License. Everything runs in the browser
 
 **Try it:** https://access.catherinejason.com/
 
+The official address is access.catherinejason.com.
+
+Found a security problem? Please report it privately, as [SECURITY.md](SECURITY.md) explains, not in a public issue.
+
 Found a step that is wrong or missing? [Open an issue.](https://github.com/Catherine-Jason/click-by-click-access/issues)
