@@ -2584,14 +2584,10 @@ function pfReset(){ pfMsg={on:null, off:null}; pfSaveMsg={on:"", off:""}; pfName
 /* characters Windows and Macs do not allow in file names are removed */
 function pfClean(s){ return String(s||"").replace(/[\u0000-\u001f\u007f<>:"\/\\|?*]/g," ").replace(/\s+/g," ").trim().replace(/[. ]+$/,"").slice(0,150).trim(); }
 function pfWho(flow){ return (flow==="on"? state.onb.intake.role : state.intake.role).replace(/\s+/g," ").trim(); }
-const PF_ROLE_WORDS = /\b(assistant|manager|lead|leader|director|coordinator|member|volunteer|officer|intern|treasurer|secretary|chair|president|staff|admin|administrator|specialist|associate|advocate|analyst|worker|aide|clerk|receptionist|accountant|bookkeeper|teacher|tutor|counselor|organizer|fellow|trustee|head|chief|supervisor|technician|developer|designer|writer|editor|board|team|program|programs|events?|office|front|desk)\b/i;
-/* "Ana Lopez" gives Ana; a role like "Program assistant" stays whole */
+/* the save button uses exactly what was typed in Role or name: "Ana Lopez" or "Program assistant" (very long entries are shortened) */
 function pfFirst(flow){
   const r=pfWho(flow); if(!r) return "";
-  const w=r.split(" ");
-  const nameLike = w.length>=2 && w.length<=4 && w.every(x=>/^\p{Lu}[\p{L}'.-]*$/u.test(x)) && !PF_ROLE_WORDS.test(r);
-  const out = nameLike? w[0] : r;
-  return out.length>40? out.slice(0,38).trim()+"…" : out;
+  return r.length>40? r.slice(0,38).trim()+"…" : r;
 }
 function pfPoss(s){ return /s$/i.test(s)? s+"'" : s+"'s"; }
 function pfFileDate(flow){ return flow==="on"? (state.onb.fileDate || state.onb.intake.startDate || todayISO()) : todayISO(); }
