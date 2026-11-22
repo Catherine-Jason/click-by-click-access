@@ -216,6 +216,7 @@ tr.invedit > td{background:var(--bg); padding:14px}
 .ist-repair,.ist-missing{color:var(--warn); border-color:var(--warn)} .ist-retired{color:var(--skip)}
 .stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px}
 .rephead{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:baseline; justify-content:space-between}
+.rephead .dls{display:inline-flex; flex-wrap:wrap; gap:4px 14px}
 .datapanel{gap:12px}
 /* v2.2: onboarding */
 select.pickperson{width:auto; max-width:100%}
@@ -290,7 +291,7 @@ select.pickperson{width:auto; max-width:100%}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.2.1 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.3 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
@@ -525,9 +526,13 @@ function importDevicesCSV(text, into, onRow){
   });
   return n;
 }
+/* Cells for the .csv and .xlsx exports. Plain values are text, xDate() marks a YYYY-MM-DD date and xTime() a date and time. */
+const xDate = iso => iso? {date:iso} : "";
+const xTime = at => at? {at:at} : "";
+function cellText(v){ return v && typeof v==="object"? (v.date || new Date(v.at).toLocaleString("en-US")) : String(v==null? "" : v); }
 /* a cell starting with = + - @ can run as a formula in Excel, so it gets a leading quote */
 function csvCell(v){
-  let s=String(v==null?"":v);
+  let s=cellText(v);
   if(/^[=+\-@\t\r]/.test(s)) s="'"+s;
   return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
 }
@@ -538,17 +543,18 @@ function csvHeader(){ return ["Type","OS"].concat(CSV_FIELD_ORDER.map(k=> k==="@
 function csvDeviceCells(d){
   return [devTypeLabel(d.type), hasOS(d)? osLabel(d.os) : ""].concat(CSV_FIELD_ORDER.map(k=>{
     if(k==="@model") return d.model; if(k==="@serial") return d.serial;
-    const f=fieldDef(k); return fieldVisible(d,f)? fieldText(d,f,true) : "";
+    const f=fieldDef(k); if(!fieldVisible(d,f)) return "";
+    return f.kind==="date"? xDate(fieldText(d,f,true)) : fieldText(d,f,true);
   }));
 }
-function devicesCSV(){
+function csvFrom(rows){ return "﻿"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n"); }
+/* the check-in export: one row per device, the same rows for .csv and .xlsx */
+function deviceRows(){
   const i=state.intake;
-  const lines=[csvHeader().concat(["Status","Status date","Person or role","Last day"]).map(csvCell).join(",")];
-  state.devices.forEach(d=>{
-    lines.push(csvDeviceCells(d).concat([devStatusLabel(d.status), d.at? new Date(d.at).toLocaleString("en-US") : "", personLabel(), i.lastDay||""]).map(csvCell).join(","));
-  });
-  return "﻿"+lines.join("\r\n");
+  return [csvHeader().concat(["Status","Status date","Person or role","Last day"])].concat(state.devices.map(d=>
+    csvDeviceCells(d).concat([devStatusLabel(d.status), xTime(d.at), personLabel(), xDate(i.lastDay)])));
 }
+function devicesCSV(){ return csvFrom(deviceRows()); }
 function templateCSV(){
   const ex={"Type":"Laptop","OS":"Windows","OS version":"Windows 11 24H2","Device name or hostname":"NP-LT-0142","Make and model":"Dell Latitude 5440","Serial or asset tag":"NP-0142",
     "Condition":"Good","Assigned to":"Program assistant","Assigned by":"Office manager","Date assigned":"2025-03-03","Department or program":"Youth programs","Location":"Main office",
@@ -561,6 +567,108 @@ function saveFile(text, name, type){
   const blob=new Blob([text],{type:type});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
+}
+/* ---------- Excel (.xlsx) export ----------
+   Builds a real workbook right in the browser, with no outside libraries, so it works offline and nothing leaves the device.
+   Header row is bold, frozen and has filter arrows. Columns are sized to fit (up to a max).
+   Dates are stored as dates. Counts the app works out are numbers. Everything else is plain text, so nothing can run as a formula. */
+const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const XL_MAX_WIDTH = 50;
+const CRC_TABLE = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = c&1? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(b){ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=CRC_TABLE[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+/* a zip file with no compression ("stored"), which is all an .xlsx needs */
+function zipStore(files){
+  const enc=new TextEncoder(), parts=[], central=[], now=new Date();
+  const tm=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1), dt=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+  let off=0;
+  files.forEach(([name,text])=>{
+    const nb=enc.encode(name), data=enc.encode(text), crc=crc32(data);
+    const h=new DataView(new ArrayBuffer(30)), c=new DataView(new ArrayBuffer(46));
+    h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(10,tm,true); h.setUint16(12,dt,true);
+    h.setUint32(14,crc,true); h.setUint32(18,data.length,true); h.setUint32(22,data.length,true); h.setUint16(26,nb.length,true);
+    c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(12,tm,true); c.setUint16(14,dt,true);
+    c.setUint32(16,crc,true); c.setUint32(20,data.length,true); c.setUint32(24,data.length,true); c.setUint16(28,nb.length,true); c.setUint32(42,off,true);
+    parts.push(new Uint8Array(h.buffer), nb, data); central.push(new Uint8Array(c.buffer), nb);
+    off += 30+nb.length+data.length;
+  });
+  const size=central.reduce((s,p)=>s+p.length,0), e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true); e.setUint32(12,size,true); e.setUint32(16,off,true);
+  const all=parts.concat(central,[new Uint8Array(e.buffer)]), out=new Uint8Array(all.reduce((s,p)=>s+p.length,0));
+  let p=0; all.forEach(a=>{ out.set(a,p); p+=a.length; });
+  return out;
+}
+/* drops characters XML does not allow (control characters, broken emoji halves), then escapes the rest */
+function xmlEsc(s){
+  return String(s).replace(/[^\t\n\r\x20-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu,"")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function colName(i){ let s=""; for(i++; i>0; i=Math.floor((i-1)/26)) s=String.fromCharCode(65+(i-1)%26)+s; return s; }
+/* Excel counts days from Dec 30, 1899. Anything that is not a real date stays text. */
+const XL_EPOCH = Date.UTC(1899,11,30);
+function xlDateSerial(iso){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||""); if(!m) return null;
+  const y=+m[1], mo=+m[2], d=+m[3], t=Date.UTC(y,mo-1,d), c=new Date(t);
+  if(y<1900 || c.getUTCMonth()!==mo-1 || c.getUTCDate()!==d) return null;
+  return (t-XL_EPOCH)/86400000;
+}
+function xlTimeSerial(ms){
+  const d=new Date(ms); if(isNaN(d) || d.getFullYear()<1900) return null;
+  return (Date.UTC(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours(),d.getMinutes(),d.getSeconds())-XL_EPOCH)/86400000;
+}
+/* rows: the first row is the header. Cells are text, a number, {date:"YYYY-MM-DD"} or {at:time}. */
+function xlsxFile(rows, sheetName){
+  const name=String(sheetName||"Sheet1").replace(/[\[\]:*?\/\\]/g," ").slice(0,31);
+  const ncol=Math.max(1, ...rows.map(r=>r.length)), widths=new Array(ncol).fill(0);
+  const fit=(ci,n)=>{ widths[ci]=Math.max(widths[ci], n); };
+  const data=rows.map((r,ri)=>{
+    let cells="";
+    r.forEach((v,ci)=>{
+      const ref=colName(ci)+(ri+1);
+      if(v && typeof v==="object"){
+        const n = v.date? xlDateSerial(v.date) : xlTimeSerial(v.at);
+        if(n!==null){ cells+='<c r="'+ref+'" s="'+(v.date? 2 : 3)+'"><v>'+n+'</v></c>'; fit(ci, v.date? 10 : 16); return; }
+        v=cellText(v);
+      }
+      if(ri>0 && typeof v==="number" && isFinite(v)){ cells+='<c r="'+ref+'"><v>'+v+'</v></c>'; fit(ci, String(v).length); return; }
+      const s=String(v==null? "" : v).replace(/\r\n?/g,"\n").slice(0,32767); if(s==="") return;
+      cells+='<c r="'+ref+'" t="inlineStr"'+(ri===0? ' s="1"' : '')+'><is><t xml:space="preserve">'+xmlEsc(s)+'</t></is></c>';
+      fit(ci, Math.max(...s.split(/\r?\n/).map(x=>x.length))*(ri===0? 1.15 : 1));
+    });
+    return '<row r="'+(ri+1)+'">'+cells+'</row>';
+  }).join("");
+  const range='A1:'+colName(ncol-1)+Math.max(1,rows.length);
+  const cols=widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+Math.min(XL_MAX_WIDTH, Math.max(8, Math.ceil(w)+2))+'" customWidth="1"/>').join("");
+  const NS='xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const HEAD='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const sheet=HEAD+'<worksheet '+NS+'><dimension ref="'+range+'"/>'+
+    '<sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>'+
+    '<sheetFormatPr defaultRowHeight="15"/><cols>'+cols+'</cols><sheetData>'+data+'</sheetData>'+
+    '<autoFilter ref="'+range+'"/><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>';
+  const abs=range.replace(/([A-Z]+)(\d+)/g,"$$$1$$$2");
+  const book=HEAD+'<workbook '+NS+'><bookViews><workbookView/></bookViews><sheets><sheet name="'+xmlEsc(name)+'" sheetId="1" r:id="rId1"/></sheets>'+
+    '<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'+xmlEsc("'"+name.replace(/'/g,"''")+"'!"+abs)+'</definedName></definedNames></workbook>';
+  const font=b=>'<font>'+(b? '<b/>' : '')+'<sz val="11"/><name val="Calibri"/><family val="2"/></font>';
+  const xf=(fmt,fontId,extra)=>'<xf numFmtId="'+fmt+'" fontId="'+fontId+'" fillId="0" borderId="0" xfId="0"'+(extra||'')+'/>';
+  const styles=HEAD+'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<fonts count="2">'+font(false)+font(true)+'</fonts>'+
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'+
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+    '<cellXfs count="4">'+xf(0,0)+xf(0,1,' applyFont="1"')+xf(14,0,' applyNumberFormat="1"')+xf(22,0,' applyNumberFormat="1"')+'</cellXfs>'+
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const REL='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  return zipStore([
+    ["[Content_Types].xml", HEAD+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'+
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'+
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ["_rels/.rels", HEAD+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="'+REL+'/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ["xl/workbook.xml", book],
+    ["xl/_rels/workbook.xml.rels", HEAD+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="'+REL+'/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="'+REL+'/styles" Target="styles.xml"/></Relationships>'],
+    ["xl/worksheets/sheet1.xml", sheet],
+    ["xl/styles.xml", styles]
+  ]);
 }
 
 function newDevice(type){ return Object.assign({id:"d"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), type:type||"laptop", os:"other", enc:"unsure", model:"", serial:"", status:"out", at:null}, blankDetails()); }
@@ -1342,7 +1450,7 @@ function viewRecord(){
     '<p class="note">'+NOTE_DISPOSAL+'</p>'+((d.out||d.missing)? '<p class="note">'+NOTE_EQUIPMENT+'</p>' : '') : "")+
   '<p class="muted aligned-note">Steps are aligned with the frameworks shown, not a certification of compliance. Laws vary by state and by the type of data you hold.</p>'+
   '<div class="rowbtns"><button class="btn primary" type="button" data-act="copy" id="btnCopy">Copy record</button>'+
-  (TOP? '<button class="btn" type="button" data-act="download">Download as text file</button>'+(state.devices.length?'<button class="btn" type="button" data-act="exportCSV">Download devices for Excel (.csv)</button>':'')+'<button class="btn" type="button" data-act="print">Print</button>' : '')+
+  (TOP? '<button class="btn" type="button" data-act="download">Download as text file</button>'+(state.devices.length?'<button class="btn" type="button" data-act="exportCSV">Download devices for Excel (.csv)</button><button class="btn" type="button" data-act="exportXLSX">Download devices for Excel (.xlsx)</button>':'')+'<button class="btn" type="button" data-act="print">Print</button>' : '')+
   '</div></section>';
 }
 
@@ -1486,28 +1594,38 @@ function viewInvReports(){
   const inv=state.inventory, R=reportLists(), dash='<span class="muted">—</span>';
   let h='<section class="panel">'+invExampleBanner()+'<div><h2>Reports</h2><p class="muted">As of '+esc(fmt(new Date()))+'.</p></div>';
   if(!inv.length) return h+'<div class="devempty">No devices in the inventory yet.</div><div class="rowbtns"><button class="btn primary" type="button" data-invgo="add">Add or import devices</button></div></section>';
-  const dl=(k,label)=> TOP? '<button class="linkbtn" type="button" data-act="invCSV" data-report="'+k+'">'+label+'</button>' : '';
+  const dl=k=> TOP? '<span class="dls"><button class="linkbtn" type="button" data-act="invCSV" data-report="'+k+'">Download as .csv</button>'+
+    '<button class="linkbtn" type="button" data-act="invXLSX" data-report="'+k+'">Download as .xlsx</button></span>' : '';
   const table=(list,head,cell)=> !list.length? '<div class="devempty">None right now.</div>' :
     '<div class="tablewrap"><table class="inv"><thead><tr><th>Device</th><th>Assigned to</th><th>Status</th><th>'+head+'</th></tr></thead><tbody>'+
     list.map(d=>'<tr><td data-l="Device"><button type="button" class="linkbtn devopen" data-invshow="'+d.id+'">'+esc(devName(d))+'</button><br><span class="muted mono">'+esc(d.serial||"No serial")+'</span></td>'+
       '<td data-l="Assigned to">'+(d.assignedTo? esc(d.assignedTo) : dash)+'</td><td data-l="Status"><span class="ist ist-'+d.invStatus+'">'+esc(invStatusLabel(d.invStatus))+'</span></td>'+
       '<td data-l="'+head+'">'+cell(d)+'</td></tr>').join("")+'</tbody></table></div>';
-  h+='<div class="rephead"><h3>Devices by status</h3>'+dl("counts","Download as .csv")+'</div><div class="stats">'+
+  h+='<div class="rephead"><h3>Devices by status</h3>'+dl("counts")+'</div><div class="stats">'+
     INV_STATUS.map(s=>'<div class="kv"><span>'+esc(s.label)+'</span><b>'+inv.filter(d=>d.invStatus===s.id).length+'</b></div>').join("")+
     '<div class="kv"><span>Total</span><b>'+inv.length+'</b></div></div>';
-  h+='<div class="rephead"><h3>Need updates ('+R.stale.length+')</h3>'+dl("stale","Download as .csv")+'</div><p class="muted">Not updated or patched in over 30 days. Retired devices are left out.</p>'+
+  h+='<div class="rephead"><h3>Need updates ('+R.stale.length+')</h3>'+dl("stale")+'</div><p class="muted">Not updated or patched in over 30 days. Retired devices are left out.</p>'+
     table(R.stale,"Last updated",d=>'<span class="st missing">⚠ '+esc(fmtShort(d.patched))+', '+patchAge(d)+' days ago</span>');
-  h+='<div class="rephead"><h3>Missing ('+R.missing.length+')</h3>'+dl("missing","Download as .csv")+'</div>'+
+  h+='<div class="rephead"><h3>Missing ('+R.missing.length+')</h3>'+dl("missing")+'</div>'+
     table(R.missing,"Location",d=>d.location? esc(d.location) : dash);
-  h+='<div class="rephead"><h3>Warranty ending in the next 90 days ('+R.warranty.length+')</h3>'+dl("warranty","Download as .csv")+'</div>'+
+  h+='<div class="rephead"><h3>Warranty ending in the next 90 days ('+R.warranty.length+')</h3>'+dl("warranty")+'</div>'+
     table(R.warranty,"Warranty end",d=>{ const n=warrantyDays(d); return esc(fmtShort(d.warranty))+' <span class="muted">('+(n===0?"today":"in "+n+" day"+(n===1?"":"s"))+')</span>'; });
-  return h+(TOP? '<div class="rowbtns"><button class="btn primary" type="button" data-act="invCSV" data-report="all">Download all devices for Excel (.csv)</button></div>' : '')+'</section>';
+  return h+(TOP? '<div class="rowbtns"><button class="btn primary" type="button" data-act="invCSV" data-report="all">Download all devices for Excel (.csv)</button>'+
+    '<button class="btn" type="button" data-act="invXLSX" data-report="all">Download all devices for Excel (.xlsx)</button></div>' : '')+'</section>';
 }
-function invCSV(list, extra){
+function invRows(list, extra){
   extra=extra||[];
-  const lines=[csvHeader().concat(["Status"]).concat(extra.map(x=>x[0])).map(csvCell).join(",")];
-  list.forEach(d=>lines.push(csvDeviceCells(d).concat([invStatusLabel(d.invStatus)]).concat(extra.map(x=>x[1](d))).map(csvCell).join(",")));
-  return "﻿"+lines.join("\r\n");
+  return [csvHeader().concat(["Status"]).concat(extra.map(x=>x[0]))]
+    .concat(list.map(d=>csvDeviceCells(d).concat([invStatusLabel(d.invStatus)]).concat(extra.map(x=>x[1](d)))));
+}
+/* the rows, file name and sheet name for one report, the same for .csv and .xlsx */
+function invReport(r){
+  const R=reportLists();
+  if(r==="counts") return {file:"inventory-status-counts", sheet:"Status counts",
+    rows:[["Status","Devices"]].concat(INV_STATUS.map(s=>[s.label, state.inventory.filter(d=>d.invStatus===s.id).length])).concat([["Total",state.inventory.length]])};
+  const pick={all:[state.inventory,[],"all-devices","All devices"], stale:[R.stale,[["Days since update",d=>patchAge(d)]],"needs-updates","Need updates"],
+    missing:[R.missing,[],"missing","Missing"], warranty:[R.warranty,[["Days until warranty ends",d=>warrantyDays(d)]],"warranty-90-days","Warranty ending"]}[r];
+  return pick? {file:"inventory-"+pick[2], sheet:pick[3], rows:invRows(pick[0],pick[1])} : null;
 }
 function exampleInventory(){
   const ago=n=>isoDate(addDays(new Date(),-n)), ahead=n=>isoDate(addDays(new Date(),n));
@@ -1596,14 +1714,10 @@ function invClick(e){
     });
     fi.click(); return true;
   }
-  if(act==="invCSV"){
-    const R=reportLists(), day=todayISO(), r=a.dataset.report;
-    if(r==="counts"){
-      const rows=[["Status","Devices"]].concat(INV_STATUS.map(s=>[s.label, state.inventory.filter(d=>d.invStatus===s.id).length])).concat([["Total",state.inventory.length]]);
-      saveFile("﻿"+rows.map(x=>x.map(csvCell).join(",")).join("\r\n"), "inventory-status-counts-"+day+".csv", "text/csv;charset=utf-8"); return true;
-    }
-    const pick={all:[state.inventory,[]], stale:[R.stale,[["Days since update",d=>patchAge(d)]]], missing:[R.missing,[]], warranty:[R.warranty,[["Days until warranty ends",d=>warrantyDays(d)]]]}[r];
-    if(pick) saveFile(invCSV(pick[0],pick[1]), "inventory-"+({all:"all-devices",stale:"needs-updates",missing:"missing",warranty:"warranty-90-days"}[r])+"-"+day+".csv", "text/csv;charset=utf-8");
+  if(act==="invCSV" || act==="invXLSX"){
+    const rep=invReport(a.dataset.report), day=todayISO(); if(!rep) return true;
+    if(act==="invCSV") saveFile(csvFrom(rep.rows), rep.file+"-"+day+".csv", "text/csv;charset=utf-8");
+    else saveFile(xlsxFile(rep.rows, rep.sheet), rep.file+"-"+day+".xlsx", XLSX_TYPE);
     return true;
   }
   return false;
@@ -1638,7 +1752,7 @@ const dataPanel=document.getElementById("dataPanel");
 dataPanel.addEventListener("click",e=>{
   const a=e.target.closest("[data-act]"); if(!a) return; const act=a.dataset.act;
   if(act==="backup"){
-    saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.2.1", saved:new Date().toISOString(), data:state}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json");
+    saveFile(JSON.stringify({app:BACKUP_APP, format:1, version:"2.3", saved:new Date().toISOString(), data:state}, null, 1), "click-by-click-access-backup-"+todayISO()+".json", "application/json");
     restoreMsg="Backup downloaded."; renderData(); return;
   }
   if(act==="restore"){
@@ -2063,7 +2177,7 @@ function viewOnbRecord(){
   (devs.length? '<h3>Devices</h3><div class="tablewrap"><table class="wide"><thead><tr><th>Device</th><th>OS</th><th>Encryption</th><th>MDM</th><th>Antivirus</th><th>Last updated</th><th>Assigned by</th><th>Date assigned</th><th>Hand out</th></tr></thead><tbody>'+devRows+'</tbody></table></div>' : '')+
   '<p class="muted aligned-note">Steps are aligned with the frameworks shown, not a certification of compliance.</p>'+
   '<div class="rowbtns"><button class="btn primary" type="button" data-act="onbCopy">Copy record</button>'+
-  (TOP? '<button class="btn" type="button" data-act="onbDownload">Download as text file</button><button class="btn" type="button" data-act="onbCSV">Download for Excel (.csv)</button><button class="btn" type="button" data-act="print">Print</button>' : '')+
+  (TOP? '<button class="btn" type="button" data-act="onbDownload">Download as text file</button><button class="btn" type="button" data-act="onbCSV">Download for Excel (.csv)</button><button class="btn" type="button" data-act="onbXLSX">Download for Excel (.xlsx)</button><button class="btn" type="button" data-act="print">Print</button>' : '')+
   '</div></section>';
 }
 function onbRecordText(){
@@ -2097,16 +2211,17 @@ function onbRecordText(){
   return lines.join("\n");
 }
 /* one row per item so the record can be sorted and filtered in Excel */
-function onbCSV(){
+function onbRows(){
   const i=state.onb.intake, rows=[["Section","Item","Status","Date","Details"]];
-  rows.push(["Person", onbPerson(), typeLabel(i.type), i.startDate, "Completed by: "+(i.doneBy||"Not entered")]);
+  rows.push(["Person", onbPerson(), typeLabel(i.type), xDate(i.startDate), "Completed by: "+(i.doneBy||"Not entered")]);
   rows.push(["Admin access", i.admin? "Yes" : "No", i.admin? "Separate admin account" : "", "", i.admin? i.adminWhy : ""]);
   onbSystemsText().forEach(s=>rows.push(["System", s, "Needed", "", ""]));
-  onbTasks().forEach(t=>{ const s=onbItemState(t.id); rows.push([onbPhaseInfo(t.ph).label, t.title, s.status==="done"? "Done" : s.status==="na"? "Not needed" : "Open", s.at? isoDate(new Date(s.at)) : "", s.note]); });
-  onbDevs().forEach(({e,d})=>rows.push(["Device", devName(d), e.handed? "Handed out" : "Not handed out", e.handed? d.dateAssigned : e.dateAssigned,
+  onbTasks().forEach(t=>{ const s=onbItemState(t.id); rows.push([onbPhaseInfo(t.ph).label, t.title, s.status==="done"? "Done" : s.status==="na"? "Not needed" : "Open", s.at? xDate(isoDate(new Date(s.at))) : "", s.note]); });
+  onbDevs().forEach(({e,d})=>rows.push(["Device", devName(d), e.handed? "Handed out" : "Not handed out", xDate(e.handed? d.dateAssigned : e.dateAssigned),
     "Serial or asset tag: "+(d.serial||"Not entered")+"; Assigned by: "+((e.handed? d.assignedBy : e.assignedBy)||"Not entered")]));
-  return "﻿"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n");
+  return rows;
 }
+function onbCSV(){ return csvFrom(onbRows()); }
 function goOnb(step){ onbMsg=""; state.onb.step=step; save(); render(); window.scrollTo({top:0, behavior:"smooth"}); }
 function updateOnbCount(){ const el=document.getElementById("onbBuildCount"); if(el) el.innerHTML='This builds a checklist of <b>'+onbTasks().length+'</b> steps.'; }
 /* clicks on the Onboarding tab; returns true when handled */
@@ -2134,6 +2249,7 @@ function onbClick(e){
   if(act==="onbCopy"){ copyRecord(a, onbRecordText()); return true; }
   if(act==="onbDownload"){ saveFile(onbRecordText(), "access-granted-"+(o.intake.startDate||todayISO())+".txt", "text/plain"); return true; }
   if(act==="onbCSV"){ saveFile(onbCSV(), "access-granted-"+(o.intake.startDate||todayISO())+".csv", "text/csv;charset=utf-8"); return true; }
+  if(act==="onbXLSX"){ saveFile(xlsxFile(onbRows(),"Access granted"), "access-granted-"+(o.intake.startDate||todayISO())+".xlsx", XLSX_TYPE); return true; }
   const row=a.closest('.item[data-onb]'); if(!row) return false;
   const id=row.dataset.id, s=Object.assign({},onbItemState(id));
   const wasDone = s.status==="done";
@@ -2283,6 +2399,7 @@ view.addEventListener("click",e=>{
     return;
   }
   if(act==="exportCSV"){ saveFile(devicesCSV(), "device-checkin-"+(state.intake.lastDay||isoDate(new Date()))+".csv", "text/csv;charset=utf-8"); return; }
+  if(act==="exportXLSX"){ saveFile(xlsxFile(deviceRows(),"Devices"), "device-checkin-"+(state.intake.lastDay||isoDate(new Date()))+".xlsx", XLSX_TYPE); return; }
   if(act==="csvTemplate"){ saveFile(templateCSV(), "device-inventory-template.csv", "text/csv;charset=utf-8"); return; }
   if(act==="importCSV"){
     const fi=document.createElement("input"); fi.type="file"; fi.accept=".csv,text/csv";
