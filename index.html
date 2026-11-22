@@ -252,14 +252,11 @@ dialog#modal{border:1px solid var(--line); border-radius:14px; background:var(--
 dialog#modal::backdrop{background:rgba(0,0,0,.6)}
 .modalbox{padding:20px; display:flex; flex-direction:column; gap:12px}
 .modalbox h2{margin:0} .modalbox p{margin:0} #modalMsg{color:var(--done)} #modalMsg:empty{display:none}
-/* v2.7: start screen, done summary, More options, 30 day checks, print */
-.homelink{font-size:13px; margin-top:4px}
-.homechoices{display:grid; grid-template-columns:1fr 1fr; gap:14px}
-.homechoice{display:flex; flex-direction:column; justify-content:center; gap:6px; text-align:left; border:1px solid var(--line); border-radius:12px; padding:22px 20px; min-height:128px; background:var(--bg); color:var(--ink)}
-.homechoice b{font-family:var(--f-display); font-size:19px} .homechoice span{color:var(--muted); font-size:15px}
-.homechoice:hover,.homechoice:focus-visible{border-color:var(--accent); background:var(--accent-soft)}
-.homesmall{font-size:13.5px; margin:0}
-#view h2[tabindex="-1"]:focus{outline:none} /* Home moves focus to the start screen heading for screen readers */
+/* v2.7: done summary, More options, 30 day checks, print */
+/* v2.7.1: each tab has a short description next to its name; on phones it sits under the name */
+nav.tabs button{display:flex; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:0 6px; line-height:1.3}
+nav.tabs .tabsub{font-family:var(--f-body); font-weight:500; font-size:13px}
+nav.tabs button:not([aria-current]) .tabsub{color:var(--muted)}
 .donesum{border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:6px}
 .donesum.done{border-left-color:var(--done)} .donesum p{margin:0}
 .donesum h3,.checks30 h3{text-transform:none; letter-spacing:0; font-size:17px}
@@ -268,8 +265,8 @@ dialog#modal::backdrop{background:rgba(0,0,0,.6)}
 .checks30{border:1px dashed var(--line); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:8px} .checks30 ul{margin:0; padding-left:1.3em} .checks30 p{margin:0}
 
 @media (max-width:620px){
-  .homechoices{grid-template-columns:1fr}
-  nav.tabs button{font-size:13px; padding:10px 4px}
+  nav.tabs button{font-size:13px; padding:9px 4px; flex-direction:column; align-items:center; gap:2px}
+  nav.tabs .tabdot{display:none} nav.tabs .tabsub{font-size:11.5px}
   .invmain{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   table.inv{min-width:0}
@@ -295,7 +292,7 @@ dialog#modal::backdrop{background:rgba(0,0,0,.6)}
   :root{--bg:#fff; --surface:#fff; --ink:#000; --muted:#444; --line:#bbb; --done:#0a5c7a; --done-soft:#fff; --warn:#8a5300; --warn-soft:#fff; --skip:#555; --accent:#0a5c7a; --accent-soft:#fff}
   body{background:#fff; background-image:none; color:#000}
   .card,nav.steps,nav.tabs,header .actions,.rowbtns,footer,.banner,#learnMore,#dataPanel{display:none!important}
-  .top .sub,#btnHome,.pfsave,.pfopen,.pfnote,.moreopts,.helpbox,.snbox,dialog,button,.learn{display:none!important}
+  .top .sub,.pfsave,.pfopen,.pfnote,.moreopts,.helpbox,.snbox,dialog,button,.learn{display:none!important}
   .panel{border:0; padding:0}
   *{box-shadow:none!important; text-shadow:none!important}
   tr,.ddcard,.donesum,.checks30{break-inside:avoid}
@@ -309,7 +306,6 @@ dialog#modal::backdrop{background:rgba(0,0,0,.6)}
     <div>
       <h1>Click by Click Access</h1>
       <p class="sub">Free onboarding, offboarding and device inventory, one step at a time.</p>
-      <button class="linkbtn homelink" id="btnHome" type="button">Home</button>
     </div>
     <div class="actions">
       <button class="btn" id="btnLearn" type="button" aria-pressed="false">Learn mode: Off</button>
@@ -319,9 +315,9 @@ dialog#modal::backdrop{background:rgba(0,0,0,.6)}
   </header>
 
   <nav class="tabs" aria-label="Sections">
-    <button type="button" data-tab="on">Onboarding</button>
-    <button type="button" data-tab="off">Offboarding</button>
-    <button type="button" data-tab="inv">Inventory</button>
+    <button type="button" data-tab="on"><span class="tabname">Onboarding</span><span class="tabdot" aria-hidden="true">&middot;</span><span class="tabsub">someone new is starting</span></button>
+    <button type="button" data-tab="off"><span class="tabname">Offboarding</span><span class="tabdot" aria-hidden="true">&middot;</span><span class="tabsub">someone is leaving</span></button>
+    <button type="button" data-tab="inv"><span class="tabname">Inventory</span><span class="tabdot" aria-hidden="true">&middot;</span><span class="tabsub">your devices (optional)</span></button>
   </nav>
 
   <div class="card" id="card" aria-live="polite">
@@ -341,7 +337,7 @@ dialog#modal::backdrop{background:rgba(0,0,0,.6)}
 
   <footer>
     <p><strong>Disclaimer:</strong> This tool is provided for educational purposes only. Its steps are aligned with, not compliant with, the NIST, CIS, HIPAA, PCI DSS and FERPA guidance it cites, and using it does not make your organization compliant. Laws vary by state and by the type of data you hold. Your answers stay in your browser and are never collected, stored or shared. It does not replace guidance from your organization's IT, HR or legal team.</p>
-    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.7 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
+    <p>&copy; 2026 Catherine Jason &middot; Click by Click Access v2.7.1 &middot; <a href="https://www.catherinejason.com" target="_blank" rel="noopener" style="color: var(--accent);">catherinejason.com</a></p>
   </footer>
 </div>
 <textarea id="copyText" aria-hidden="true" tabindex="-1"></textarea>
@@ -1148,7 +1144,7 @@ function normalizeState(s){
   const out = {
     step: ["intake","list","record"].indexOf(s.step)!==-1? s.step : "intake", example: s.example===true, learn: s.learn===true,
     /* v2.0 and older saves have no tabs or inventory */
-    tab: ["on","off","inv","home"].indexOf(s.tab)!==-1? s.tab : "off", invStep: ["all","add","reports"].indexOf(s.invStep)!==-1? s.invStep : "all",
+    tab: ["on","off","inv"].indexOf(s.tab)!==-1? s.tab : "off", invStep: ["all","add","reports"].indexOf(s.invStep)!==-1? s.invStep : "all",
     intake: {role:str(i.role,200), type: ["staff","volunteer","board"].indexOf(i.type)!==-1? i.type : "staff", departure: i.departure==="unplanned"? "unplanned" : "planned",
       lastDay: typeof i.lastDay==="string" && /^\d{4}-\d{2}-\d{2}$/.test(i.lastDay)? i.lastDay : "", doneBy:str(i.doneBy,200), admin: i.admin===true,
       systems: Array.isArray(i.systems)? SYSTEMS.map(x=>x.id).filter(id=>i.systems.indexOf(id)!==-1) : [], other:str(i.other,1000), regs:r, dept:str(i.dept,200)},
@@ -1171,7 +1167,7 @@ let state = load();
 /* first visit: their own empty work (the example is only ever a separate view, so nothing real is typed into it by mistake) */
 if(!state) state=blank();
 /* v2.7: the start screen shows when nothing is in progress; work in progress goes straight back to that work. The Inventory tab is remembered. */
-if(state.tab!=="inv"){ const offW=offEntered(state), onW=onbEntered(state.onb); if(!offW && !onW) state.tab="home"; else if(state.tab==="home" || (state.tab==="off" && !offW) || (state.tab==="on" && !onW)) state.tab = offW? "off" : "on"; } /* START SCREEN RULE */
+{ const offW=offEntered(state), onW=onbEntered(state.onb), cur=state.tab; if(!((cur==="off" && offW) || (cur==="on" && onW) || (cur==="inv" && state.inventory.length))) state.tab = onW? "on" : offW? "off" : "on"; } /* OPENING TAB RULE: the last tab if it has work, else a tab with work, else Onboarding */
 let importMsg = "";
 const openMore = new Set(); /* devices whose "More details" is open, kept across redraws */
 
@@ -2994,8 +2990,6 @@ function pfSaveBox(flow){
 }
 /* clicks for opening and saving person files; returns true when handled */
 function pfClick(e){
-  const h=e.target.closest("[data-home]");
-  if(h){ const t=h.dataset.home; if(t==="on") state.onb.step="intake"; if(t==="off") state.step="intake"; setTab(t); return true; }
   const a=e.target.closest("[data-act]"); if(!a) return false;
   const act=a.dataset.act, flow=a.dataset.flow || (state.tab==="on"? "on" : "off");
   if(act==="pfOpen"){ pfOpen(a.dataset.mode); return true; }
@@ -3137,17 +3131,8 @@ function devEntered(d){
   return d.status!=="out" || ["model","serial","os","enc"].concat(DEV_FIELDS.filter(f=>f.kind!=="enc").map(f=>f.k)).some(k=>stableStr(d[k])!==stableStr(b[k]));
 }
 
-/* ================= v2.7 (Access only): start screen, Record step summary, 30 day checks ================= */
+/* ================= v2.7 (Access only): Record step summary, 30 day checks ================= */
 let moreOpen = {on:false, off:false}; /* whether More options is open on each Record step */
-function viewHome(){
-  return '<section class="panel home"><div><h2>What do you need to do today?</h2></div>'+
-    '<div class="homechoices">'+
-      '<button class="homechoice" type="button" data-home="on"><b>Someone new is starting</b><span>Set up their accounts and devices.</span></button>'+
-      '<button class="homechoice" type="button" data-home="off"><b>Someone is leaving</b><span>Shut off their access and collect devices.</span></button>'+
-    '</div>'+
-    '<p class="muted homesmall">Have an inventory? Open the <button class="linkbtn" type="button" data-home="inv">Inventory tab</button> to add or import your devices. (Optional)</p>'+
-    '<p class="muted homesmall">Nothing you enter leaves your browser.</p></section>';
-}
 /* the top of each Record step: is it done, in plain words */
 function doneSummary(flow){
   const on=flow==="on", who= on? onbPerson() : personLabel(), i= on? state.onb.intake : state.intake;
@@ -3224,12 +3209,10 @@ function render(){
   nav.setAttribute("aria-label", tab==="off"? "Offboarding steps" : tab==="inv"? "Inventory steps" : "Onboarding steps");
   nav.innerHTML = bar.map((s,n)=>'<button type="button" data-step="'+s[0]+'"'+(s[0]===cur?' aria-current="step"':'')+'><span class="n">'+(n+1)+'</span><span>'+s[1]+'</span></button>').join("");
   /* the progress card and the Learn mode, example and start new buttons belong to a person, so Inventory has none */
-  document.getElementById("card").hidden = tab==="inv" || tab==="home";
-  document.querySelector(".top .actions").hidden = tab==="inv" || tab==="home";
-  nav.hidden = tab==="home";
-  const hb=document.getElementById("btnHome"); if(tab==="home") hb.setAttribute("aria-current","page"); else hb.removeAttribute("aria-current");
+  document.getElementById("card").hidden = tab==="inv";
+  document.querySelector(".top .actions").hidden = tab==="inv";
   document.getElementById("btnNew").hidden = !!exView;
-  v.innerHTML = exViewBanner() + (tab==="home" ? viewHome() : tab==="on" ? (state.onb.step==="list" ? viewOnbList() : state.onb.step==="record" ? viewOnbRecord() : viewOnbIntake())
+  v.innerHTML = exViewBanner() + (tab==="on" ? (state.onb.step==="list" ? viewOnbList() : state.onb.step==="record" ? viewOnbRecord() : viewOnbIntake())
     : tab==="inv" ? (state.invStep==="add" ? viewInvAdd() : state.invStep==="reports" ? viewInvReports() : viewInvAll())
     : state.step==="list" ? viewList() : state.step==="record" ? viewRecord() : viewIntake());
   document.getElementById("learnMore").innerHTML = viewLearnMore();
@@ -3417,7 +3400,6 @@ function startNew(){
 }
 function keepApp(){ return {learn:state.learn, tab:state.tab, invStep:state.invStep, inventory:state.inventory, onb:state.onb}; }
 btnNew.addEventListener("click",startNew);
-document.getElementById("btnHome").addEventListener("click",()=>{ setTab("home"); const h=view.querySelector("h2"); if(h){ h.setAttribute("tabindex","-1"); h.focus({preventScroll:true}); } });
 /* Load example opens a separate example view and never touches their work */
 document.getElementById("btnExample").addEventListener("click", loadExample);
 /* Learn mode opens or closes every explanation, the glossary and the sources at once */
